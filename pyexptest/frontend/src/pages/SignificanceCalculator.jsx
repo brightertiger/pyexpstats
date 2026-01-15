@@ -35,12 +35,12 @@ function SignificanceCalculator() {
     setError(null)
     
     const endpoint = testType === 'binary' 
-      ? '/api/binary/analyze'
-      : '/api/continuous/analyze'
+      ? '/api/conversion/analyze'
+      : '/api/numeric/analyze'
     
     const summaryEndpoint = testType === 'binary'
-      ? '/api/binary/analyze/summary'
-      : '/api/continuous/analyze/summary'
+      ? '/api/conversion/analyze/summary'
+      : '/api/numeric/analyze/summary'
     
     const payload = testType === 'binary'
       ? {

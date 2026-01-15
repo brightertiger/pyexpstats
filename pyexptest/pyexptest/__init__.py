@@ -1,9 +1,9 @@
-from pyexptest import binary
-from pyexptest import continuous
+from pyexptest import conversion_effect
+from pyexptest import numeric_effect
 
 __version__ = "0.1.0"
 
 __all__ = [
-    "binary",
-    "continuous",
+    "conversion_effect",
+    "numeric_effect",
 ]

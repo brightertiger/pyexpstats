@@ -30,12 +30,12 @@ function SampleSizeCalculator() {
     setError(null)
     
     const endpoint = testType === 'binary' 
-      ? '/api/binary/sample-size'
-      : '/api/continuous/sample-size'
+      ? '/api/conversion/sample-size'
+      : '/api/numeric/sample-size'
     
     const summaryEndpoint = testType === 'binary'
-      ? '/api/binary/sample-size/summary'
-      : '/api/continuous/sample-size/summary'
+      ? '/api/conversion/sample-size/summary'
+      : '/api/numeric/sample-size/summary'
     
     const payload = testType === 'binary'
       ? {

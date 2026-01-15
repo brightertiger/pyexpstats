@@ -27,8 +27,8 @@ function ConfidenceIntervalCalculator() {
     setError(null)
     
     const endpoint = testType === 'binary' 
-      ? '/api/binary/confidence-interval'
-      : '/api/continuous/confidence-interval'
+      ? '/api/conversion/confidence-interval'
+      : '/api/numeric/confidence-interval'
     
     const payload = testType === 'binary'
       ? {

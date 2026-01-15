@@ -3,10 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 import os
 
-from pyexptest import binary, continuous
+from pyexptest import conversion_effect, numeric_effect
 
 app = FastAPI(
     title="pyexptest API",
@@ -23,15 +23,16 @@ app.add_middleware(
 )
 
 
-class BinarySampleSizeRequest(BaseModel):
+class ConversionSampleSizeRequest(BaseModel):
     current_rate: float = Field(..., description="Current conversion rate (e.g., 5 for 5% or 0.05)")
     lift_percent: float = Field(10, description="Minimum lift to detect in % (e.g., 10 for 10%)")
     confidence: int = Field(95, ge=80, le=99, description="Confidence level (80-99)")
     power: int = Field(80, ge=50, le=99, description="Statistical power (50-99)")
     daily_visitors: Optional[int] = Field(None, gt=0, description="Optional: daily traffic for duration estimate")
+    num_variants: int = Field(2, ge=2, le=10, description="Number of variants including control")
 
 
-class BinaryAnalyzeRequest(BaseModel):
+class ConversionAnalyzeRequest(BaseModel):
     control_visitors: int = Field(..., gt=0, description="Number of visitors in control")
     control_conversions: int = Field(..., ge=0, description="Number of conversions in control")
     variant_visitors: int = Field(..., gt=0, description="Number of visitors in variant")
@@ -40,22 +41,36 @@ class BinaryAnalyzeRequest(BaseModel):
     test_name: str = Field("A/B Test", description="Name for the summary report")
 
 
-class BinaryConfidenceIntervalRequest(BaseModel):
+class ConversionVariant(BaseModel):
+    name: str = Field(..., description="Variant name (e.g., 'control', 'variant_a')")
+    visitors: int = Field(..., gt=0, description="Number of visitors")
+    conversions: int = Field(..., ge=0, description="Number of conversions")
+
+
+class ConversionMultiAnalyzeRequest(BaseModel):
+    variants: List[ConversionVariant] = Field(..., min_length=2, description="List of variants")
+    confidence: int = Field(95, ge=80, le=99, description="Confidence level (80-99)")
+    correction: Literal["bonferroni", "none"] = Field("bonferroni", description="Multiple comparison correction")
+    test_name: str = Field("Multi-Variant Test", description="Name for the summary report")
+
+
+class ConversionConfidenceIntervalRequest(BaseModel):
     visitors: int = Field(..., gt=0, description="Total visitors")
     conversions: int = Field(..., ge=0, description="Total conversions")
     confidence: int = Field(95, ge=80, le=99, description="Confidence level")
 
 
-class ContinuousSampleSizeRequest(BaseModel):
+class NumericSampleSizeRequest(BaseModel):
     current_mean: float = Field(..., description="Current average value (e.g., $50)")
     current_std: float = Field(..., gt=0, description="Standard deviation")
     lift_percent: float = Field(5, description="Minimum lift to detect in % (e.g., 5 for 5%)")
     confidence: int = Field(95, ge=80, le=99, description="Confidence level (80-99)")
     power: int = Field(80, ge=50, le=99, description="Statistical power (50-99)")
     daily_visitors: Optional[int] = Field(None, gt=0, description="Optional: daily traffic for duration estimate")
+    num_variants: int = Field(2, ge=2, le=10, description="Number of variants including control")
 
 
-class ContinuousAnalyzeRequest(BaseModel):
+class NumericAnalyzeRequest(BaseModel):
     control_visitors: int = Field(..., gt=0, description="Number of visitors in control")
     control_mean: float = Field(..., description="Average value in control")
     control_std: float = Field(..., ge=0, description="Standard deviation in control")
@@ -68,7 +83,23 @@ class ContinuousAnalyzeRequest(BaseModel):
     currency: str = Field("$", description="Currency symbol")
 
 
-class ContinuousConfidenceIntervalRequest(BaseModel):
+class NumericVariant(BaseModel):
+    name: str = Field(..., description="Variant name (e.g., 'control', 'variant_a')")
+    visitors: int = Field(..., gt=0, description="Sample size")
+    mean: float = Field(..., description="Average value")
+    std: float = Field(..., ge=0, description="Standard deviation")
+
+
+class NumericMultiAnalyzeRequest(BaseModel):
+    variants: List[NumericVariant] = Field(..., min_length=2, description="List of variants")
+    confidence: int = Field(95, ge=80, le=99, description="Confidence level (80-99)")
+    correction: Literal["bonferroni", "none"] = Field("bonferroni", description="Multiple comparison correction")
+    test_name: str = Field("Multi-Variant Test", description="Name for the summary report")
+    metric_name: str = Field("Average Value", description="Name of the metric")
+    currency: str = Field("$", description="Currency symbol")
+
+
+class NumericConfidenceIntervalRequest(BaseModel):
     visitors: int = Field(..., gt=1, description="Sample size")
     mean: float = Field(..., description="Sample mean")
     std: float = Field(..., ge=0, description="Standard deviation")
@@ -80,18 +111,19 @@ def health_check():
     return {"status": "healthy", "version": "0.1.0"}
 
 
-@app.post("/api/binary/sample-size")
-def binary_sample_size(request: BinarySampleSizeRequest):
+@app.post("/api/conversion/sample-size")
+def conversion_sample_size(request: ConversionSampleSizeRequest):
     try:
         rate = request.current_rate
         if rate > 1:
             rate = rate / 100
         
-        plan = binary.sample_size(
+        plan = conversion_effect.sample_size(
             current_rate=rate,
             lift_percent=request.lift_percent,
             confidence=request.confidence,
             power=request.power,
+            num_variants=request.num_variants,
         )
         
         if request.daily_visitors:
@@ -111,10 +143,10 @@ def binary_sample_size(request: BinarySampleSizeRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/binary/analyze")
-def binary_analyze(request: BinaryAnalyzeRequest):
+@app.post("/api/conversion/analyze")
+def conversion_analyze(request: ConversionAnalyzeRequest):
     try:
-        result = binary.analyze(
+        result = conversion_effect.analyze(
             control_visitors=request.control_visitors,
             control_conversions=request.control_conversions,
             variant_visitors=request.variant_visitors,
@@ -138,47 +170,107 @@ def binary_analyze(request: BinaryAnalyzeRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/binary/analyze/summary", response_class=PlainTextResponse)
-def binary_analyze_summary(request: BinaryAnalyzeRequest):
+@app.post("/api/conversion/analyze-multi")
+def conversion_analyze_multi(request: ConversionMultiAnalyzeRequest):
     try:
-        result = binary.analyze(
+        variants = [{"name": v.name, "visitors": v.visitors, "conversions": v.conversions} for v in request.variants]
+        
+        result = conversion_effect.analyze_multi(
+            variants=variants,
+            confidence=request.confidence,
+            correction=request.correction,
+        )
+        
+        return {
+            "is_significant": result.is_significant,
+            "confidence": result.confidence,
+            "p_value": result.p_value,
+            "test_statistic": result.test_statistic,
+            "degrees_of_freedom": result.degrees_of_freedom,
+            "best_variant": result.best_variant,
+            "worst_variant": result.worst_variant,
+            "variants": [
+                {"name": v.name, "visitors": v.visitors, "conversions": v.conversions, "rate": v.rate}
+                for v in result.variants
+            ],
+            "pairwise_comparisons": [
+                {
+                    "variant_a": p.variant_a,
+                    "variant_b": p.variant_b,
+                    "rate_a": p.rate_a,
+                    "rate_b": p.rate_b,
+                    "lift_percent": p.lift_percent,
+                    "lift_absolute": p.lift_absolute,
+                    "p_value": p.p_value,
+                    "p_value_adjusted": p.p_value_adjusted,
+                    "is_significant": p.is_significant,
+                    "confidence_interval": [p.confidence_interval_lower, p.confidence_interval_upper],
+                }
+                for p in result.pairwise_comparisons
+            ],
+            "recommendation": result.recommendation,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conversion/analyze-multi/summary", response_class=PlainTextResponse)
+def conversion_analyze_multi_summary(request: ConversionMultiAnalyzeRequest):
+    try:
+        variants = [{"name": v.name, "visitors": v.visitors, "conversions": v.conversions} for v in request.variants]
+        
+        result = conversion_effect.analyze_multi(
+            variants=variants,
+            confidence=request.confidence,
+            correction=request.correction,
+        )
+        return conversion_effect.summarize_multi(result, test_name=request.test_name)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conversion/analyze/summary", response_class=PlainTextResponse)
+def conversion_analyze_summary(request: ConversionAnalyzeRequest):
+    try:
+        result = conversion_effect.analyze(
             control_visitors=request.control_visitors,
             control_conversions=request.control_conversions,
             variant_visitors=request.variant_visitors,
             variant_conversions=request.variant_conversions,
             confidence=request.confidence,
         )
-        return binary.summarize(result, test_name=request.test_name)
+        return conversion_effect.summarize(result, test_name=request.test_name)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/binary/sample-size/summary", response_class=PlainTextResponse)
-def binary_sample_size_summary(request: BinarySampleSizeRequest):
+@app.post("/api/conversion/sample-size/summary", response_class=PlainTextResponse)
+def conversion_sample_size_summary(request: ConversionSampleSizeRequest):
     try:
         rate = request.current_rate
         if rate > 1:
             rate = rate / 100
         
-        plan = binary.sample_size(
+        plan = conversion_effect.sample_size(
             current_rate=rate,
             lift_percent=request.lift_percent,
             confidence=request.confidence,
             power=request.power,
+            num_variants=request.num_variants,
         )
         
         if request.daily_visitors:
             plan.with_daily_traffic(request.daily_visitors)
         
-        return binary.summarize_plan(plan)
+        return conversion_effect.summarize_plan(plan)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/binary/confidence-interval")
-def binary_confidence_interval(request: BinaryConfidenceIntervalRequest):
+@app.post("/api/conversion/confidence-interval")
+def conversion_confidence_interval(request: ConversionConfidenceIntervalRequest):
     try:
-        result = binary.confidence_interval(
+        result = conversion_effect.confidence_interval(
             visitors=request.visitors,
             conversions=request.conversions,
             confidence=request.confidence,
@@ -194,15 +286,16 @@ def binary_confidence_interval(request: BinaryConfidenceIntervalRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/continuous/sample-size")
-def continuous_sample_size(request: ContinuousSampleSizeRequest):
+@app.post("/api/numeric/sample-size")
+def numeric_sample_size(request: NumericSampleSizeRequest):
     try:
-        plan = continuous.sample_size(
+        plan = numeric_effect.sample_size(
             current_mean=request.current_mean,
             current_std=request.current_std,
             lift_percent=request.lift_percent,
             confidence=request.confidence,
             power=request.power,
+            num_variants=request.num_variants,
         )
         
         if request.daily_visitors:
@@ -223,10 +316,10 @@ def continuous_sample_size(request: ContinuousSampleSizeRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/continuous/analyze")
-def continuous_analyze(request: ContinuousAnalyzeRequest):
+@app.post("/api/numeric/analyze")
+def numeric_analyze(request: NumericAnalyzeRequest):
     try:
-        result = continuous.analyze(
+        result = numeric_effect.analyze(
             control_visitors=request.control_visitors,
             control_mean=request.control_mean,
             control_std=request.control_std,
@@ -252,10 +345,75 @@ def continuous_analyze(request: ContinuousAnalyzeRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/continuous/analyze/summary", response_class=PlainTextResponse)
-def continuous_analyze_summary(request: ContinuousAnalyzeRequest):
+@app.post("/api/numeric/analyze-multi")
+def numeric_analyze_multi(request: NumericMultiAnalyzeRequest):
     try:
-        result = continuous.analyze(
+        variants = [{"name": v.name, "visitors": v.visitors, "mean": v.mean, "std": v.std} for v in request.variants]
+        
+        result = numeric_effect.analyze_multi(
+            variants=variants,
+            confidence=request.confidence,
+            correction=request.correction,
+        )
+        
+        return {
+            "is_significant": result.is_significant,
+            "confidence": result.confidence,
+            "p_value": result.p_value,
+            "f_statistic": result.f_statistic,
+            "df_between": result.df_between,
+            "df_within": result.df_within,
+            "best_variant": result.best_variant,
+            "worst_variant": result.worst_variant,
+            "variants": [
+                {"name": v.name, "visitors": v.visitors, "mean": v.mean, "std": v.std}
+                for v in result.variants
+            ],
+            "pairwise_comparisons": [
+                {
+                    "variant_a": p.variant_a,
+                    "variant_b": p.variant_b,
+                    "mean_a": p.mean_a,
+                    "mean_b": p.mean_b,
+                    "lift_percent": p.lift_percent,
+                    "lift_absolute": p.lift_absolute,
+                    "p_value": p.p_value,
+                    "p_value_adjusted": p.p_value_adjusted,
+                    "is_significant": p.is_significant,
+                    "confidence_interval": [p.confidence_interval_lower, p.confidence_interval_upper],
+                }
+                for p in result.pairwise_comparisons
+            ],
+            "recommendation": result.recommendation,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/numeric/analyze-multi/summary", response_class=PlainTextResponse)
+def numeric_analyze_multi_summary(request: NumericMultiAnalyzeRequest):
+    try:
+        variants = [{"name": v.name, "visitors": v.visitors, "mean": v.mean, "std": v.std} for v in request.variants]
+        
+        result = numeric_effect.analyze_multi(
+            variants=variants,
+            confidence=request.confidence,
+            correction=request.correction,
+        )
+        return numeric_effect.summarize_multi(
+            result,
+            test_name=request.test_name,
+            metric_name=request.metric_name,
+            currency=request.currency,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/numeric/analyze/summary", response_class=PlainTextResponse)
+def numeric_analyze_summary(request: NumericAnalyzeRequest):
+    try:
+        result = numeric_effect.analyze(
             control_visitors=request.control_visitors,
             control_mean=request.control_mean,
             control_std=request.control_std,
@@ -264,7 +422,7 @@ def continuous_analyze_summary(request: ContinuousAnalyzeRequest):
             variant_std=request.variant_std,
             confidence=request.confidence,
         )
-        return continuous.summarize(
+        return numeric_effect.summarize(
             result, 
             test_name=request.test_name,
             metric_name=request.metric_name,
@@ -274,29 +432,30 @@ def continuous_analyze_summary(request: ContinuousAnalyzeRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/continuous/sample-size/summary", response_class=PlainTextResponse)
-def continuous_sample_size_summary(request: ContinuousSampleSizeRequest):
+@app.post("/api/numeric/sample-size/summary", response_class=PlainTextResponse)
+def numeric_sample_size_summary(request: NumericSampleSizeRequest):
     try:
-        plan = continuous.sample_size(
+        plan = numeric_effect.sample_size(
             current_mean=request.current_mean,
             current_std=request.current_std,
             lift_percent=request.lift_percent,
             confidence=request.confidence,
             power=request.power,
+            num_variants=request.num_variants,
         )
         
         if request.daily_visitors:
             plan.with_daily_traffic(request.daily_visitors)
         
-        return continuous.summarize_plan(plan)
+        return numeric_effect.summarize_plan(plan)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/continuous/confidence-interval")
-def continuous_confidence_interval(request: ContinuousConfidenceIntervalRequest):
+@app.post("/api/numeric/confidence-interval")
+def numeric_confidence_interval(request: NumericConfidenceIntervalRequest):
     try:
-        result = continuous.confidence_interval(
+        result = numeric_effect.confidence_interval(
             visitors=request.visitors,
             mean=request.mean,
             std=request.std,
