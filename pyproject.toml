@@ -61,7 +61,7 @@ Issues = "https://github.com/pyexptest/pyexptest/issues"
 pyexptest-server = "pyexptest.api:main"
 
 [tool.setuptools]
-packages = ["pyexptest", "pyexptest.utils"]
+packages = ["pyexptest", "pyexptest.utils", "pyexptest.effects", "pyexptest.effects.outcome"]
 
 [tool.setuptools.package-data]
 pyexptest = ["py.typed"]

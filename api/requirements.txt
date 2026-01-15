@@ -1,0 +1,5 @@
+fastapi>=0.100.0
+pydantic>=2.0.0
+mangum>=0.17.0
+numpy>=1.21.0
+scipy>=1.7.0
