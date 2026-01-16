@@ -1,5 +1,5 @@
 import pytest
-from pyexptest import conversion
+from expstats import conversion
 
 
 class TestConversionSampleSize:

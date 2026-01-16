@@ -10,7 +10,7 @@ function App() {
     <div className="app-container">
       <nav className="sidebar">
         <div className="sidebar-header">
-          <img src="/logo.png" alt="pyexptest" className="sidebar-logo" />
+          <img src="/logo.png" alt="expstats" className="sidebar-logo" />
         </div>
         
         <div className="nav-section">
@@ -66,7 +66,7 @@ function App() {
         <div className="nav-section">
           <div className="nav-section-title">Help</div>
           <a 
-            href="https://github.com/pyexptest/pyexptest"
+            href="https://github.com/expstats/expstats"
             target="_blank"
             rel="noopener noreferrer"
             className="nav-link"

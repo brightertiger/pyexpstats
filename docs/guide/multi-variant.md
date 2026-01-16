@@ -1,6 +1,6 @@
 # Multi-Variant Tests
 
-Sometimes you want to test more than one variant at a time. pyexptest supports multi-variant testing with proper statistical adjustments.
+Sometimes you want to test more than one variant at a time. expstats supports multi-variant testing with proper statistical adjustments.
 
 ## When to Use Multi-Variant Tests
 
@@ -18,7 +18,7 @@ Sometimes you want to test more than one variant at a time. pyexptest supports m
 Multi-variant tests need more sample size:
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 # 2-variant test
 plan_2 = conversion.sample_size(current_rate=5, lift_percent=10, num_variants=2)
@@ -48,7 +48,7 @@ Output:
 Use Chi-square test for conversion rate multi-variant tests:
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 result = conversion.analyze_multi(
     variants=[
@@ -87,7 +87,7 @@ for p in result.pairwise_comparisons:
 Use ANOVA for numeric metric multi-variant tests:
 
 ```python
-from pyexptest import magnitude
+from expstats import magnitude
 
 result = magnitude.analyze_multi(
     variants=[

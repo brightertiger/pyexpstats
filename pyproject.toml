@@ -3,13 +3,13 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyexptest"
+name = "expstats"
 version = "0.1.0"
 description = "Statistical tools for A/B testing - sample size calculation, power analysis, and significance testing"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "pyexptest contributors"}
+    {name = "expstats contributors"}
 ]
 requires-python = ">=3.9"
 classifiers = [
@@ -52,19 +52,19 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/pyexptest/pyexptest"
-Documentation = "https://github.com/pyexptest/pyexptest#readme"
-Repository = "https://github.com/pyexptest/pyexptest"
-Issues = "https://github.com/pyexptest/pyexptest/issues"
+Homepage = "https://github.com/expstats/expstats"
+Documentation = "https://github.com/expstats/expstats#readme"
+Repository = "https://github.com/expstats/expstats"
+Issues = "https://github.com/expstats/expstats/issues"
 
 [project.scripts]
-pyexptest-server = "pyexptest.api:main"
+expstats-server = "expstats.api:main"
 
 [tool.setuptools]
-packages = ["pyexptest", "pyexptest.utils", "pyexptest.effects", "pyexptest.effects.outcome"]
+packages = ["expstats", "expstats.utils", "expstats.effects", "expstats.effects.outcome"]
 
 [tool.setuptools.package-data]
-pyexptest = ["py.typed"]
+expstats = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

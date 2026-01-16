@@ -71,7 +71,7 @@ Set daily traffic to calculate estimated test duration.
 ### Example
 
 ```python
-from pyexptest import magnitude
+from expstats import magnitude
 
 plan = magnitude.sample_size(
     current_mean=50,      # $50 average order value
@@ -142,7 +142,7 @@ def analyze(
 ### Example
 
 ```python
-from pyexptest import magnitude
+from expstats import magnitude
 
 result = magnitude.analyze(
     control_visitors=5000,
@@ -211,7 +211,7 @@ Each variant dictionary must have:
 ### Example
 
 ```python
-from pyexptest import magnitude
+from expstats import magnitude
 
 result = magnitude.analyze_multi(
     variants=[
@@ -298,7 +298,7 @@ def diff_in_diff(
 ### Example
 
 ```python
-from pyexptest import magnitude
+from expstats import magnitude
 
 result = magnitude.diff_in_diff(
     control_pre_n=1000,
@@ -358,7 +358,7 @@ def confidence_interval(
 ### Example
 
 ```python
-from pyexptest import magnitude
+from expstats import magnitude
 
 ci = magnitude.confidence_interval(
     visitors=1000,
@@ -402,7 +402,7 @@ A markdown-formatted string suitable for sharing with stakeholders.
 ### Example
 
 ```python
-from pyexptest import magnitude
+from expstats import magnitude
 
 result = magnitude.analyze(...)
 report = magnitude.summarize(

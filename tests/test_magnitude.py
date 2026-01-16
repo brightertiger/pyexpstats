@@ -1,5 +1,5 @@
 import pytest
-from pyexptest import magnitude
+from expstats import magnitude
 
 
 class TestMagnitudeSampleSize:

@@ -16,7 +16,7 @@ A proper sample size calculation ensures:
 ## For Conversion Rate Tests
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 plan = conversion.sample_size(
     current_rate=5,       # Your current conversion rate (5%)
@@ -53,7 +53,7 @@ print(f"Test duration: {plan.test_duration_days} days")
 ## For Revenue / Numeric Tests
 
 ```python
-from pyexptest import magnitude
+from expstats import magnitude
 
 plan = magnitude.sample_size(
     current_mean=50,      # Current average order value ($50)

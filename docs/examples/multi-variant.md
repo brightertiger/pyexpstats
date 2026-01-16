@@ -1,13 +1,13 @@
 # Multi-Variant Test Examples
 
-Real-world examples of using pyexptest for tests with 3+ variants.
+Real-world examples of using expstats for tests with 3+ variants.
 
 ## Example 1: Button Color Test (Conversion)
 
 Testing 4 button colors on your CTA:
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 result = conversion.analyze_multi(
     variants=[
@@ -50,7 +50,7 @@ Variant Performance:
 Testing 3 pricing page layouts:
 
 ```python
-from pyexptest import magnitude
+from expstats import magnitude
 
 result = magnitude.analyze_multi(
     variants=[

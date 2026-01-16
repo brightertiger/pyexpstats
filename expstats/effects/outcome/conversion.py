@@ -1,28 +1,26 @@
 import math
-from scipy.stats import norm, t, f as f_dist
+from scipy.stats import norm, chi2_contingency
 from typing import Literal, Optional, List, Dict, Any
 from dataclasses import dataclass
 
-from pyexptest.effects.outcome.base import FullOutcomeEffect
-from pyexptest.utils.stats import (
-    sample_size_two_means,
-    welch_t_test,
-    mean_ci as calc_mean_ci,
-    mean_difference_se,
+from expstats.effects.outcome.base import FullOutcomeEffect
+from expstats.utils.stats import (
+    sample_size_two_proportions,
+    z_test_two_proportions,
+    proportion_ci,
+    proportion_difference_se,
     lift_calculations,
     bonferroni_correction,
-    t_critical,
-    welch_df,
+    z_alpha as get_z_alpha,
 )
 
 
 @dataclass
-class MagnitudeSampleSizePlan:
+class ConversionSampleSizePlan:
     visitors_per_variant: int
     total_visitors: int
-    current_mean: float
-    expected_mean: float
-    standard_deviation: float
+    current_rate: float
+    expected_rate: float
     lift_percent: float
     confidence: int
     power: int
@@ -36,15 +34,15 @@ class MagnitudeSampleSizePlan:
     def total_subjects(self) -> int:
         return self.total_visitors
     
-    def with_daily_traffic(self, daily_visitors: int) -> 'MagnitudeSampleSizePlan':
+    def with_daily_traffic(self, daily_visitors: int) -> 'ConversionSampleSizePlan':
         self.test_duration_days = math.ceil(self.total_visitors / daily_visitors)
         return self
 
 
 @dataclass
-class MagnitudeTestResults:
-    control_mean: float
-    variant_mean: float
+class ConversionTestResults:
+    control_rate: float
+    variant_rate: float
     lift_percent: float
     lift_absolute: float
     is_significant: bool
@@ -53,9 +51,9 @@ class MagnitudeTestResults:
     confidence_interval_lower: float
     confidence_interval_upper: float
     control_visitors: int
-    control_std: float
+    control_conversions: int
     variant_visitors: int
-    variant_std: float
+    variant_conversions: int
     winner: Literal["control", "variant", "no winner yet"]
     recommendation: str
     
@@ -69,8 +67,8 @@ class MagnitudeTestResults:
 
 
 @dataclass
-class MagnitudeConfidenceInterval:
-    mean: float
+class ConversionConfidenceInterval:
+    rate: float
     lower: float
     upper: float
     confidence: int
@@ -78,7 +76,7 @@ class MagnitudeConfidenceInterval:
     
     @property
     def point_estimate(self) -> float:
-        return self.mean
+        return self.rate
     
     @property
     def lower_bound(self) -> float:
@@ -90,19 +88,22 @@ class MagnitudeConfidenceInterval:
 
 
 @dataclass
-class MagnitudeVariant:
+class ConversionVariant:
     name: str
     visitors: int
-    mean: float
-    std: float
+    conversions: int
+    
+    @property
+    def rate(self) -> float:
+        return self.conversions / self.visitors if self.visitors > 0 else 0
 
 
 @dataclass
-class MagnitudePairwiseComparison:
+class ConversionPairwiseComparison:
     variant_a: str
     variant_b: str
-    mean_a: float
-    mean_b: float
+    rate_a: float
+    rate_b: float
     lift_percent: float
     lift_absolute: float
     p_value: float
@@ -117,26 +118,25 @@ class MagnitudePairwiseComparison:
 
 
 @dataclass
-class MagnitudeMultiVariantResults:
-    variants: List[MagnitudeVariant]
+class ConversionMultiVariantResults:
+    variants: List[ConversionVariant]
     is_significant: bool
     confidence: int
     p_value: float
-    f_statistic: float
-    df_between: int
-    df_within: int
+    test_statistic: float
+    degrees_of_freedom: int
     best_variant: str
     worst_variant: str
-    pairwise_comparisons: List[MagnitudePairwiseComparison]
+    pairwise_comparisons: List[ConversionPairwiseComparison]
     recommendation: str
 
 
 @dataclass
-class MagnitudeDiffInDiffResults:
-    control_pre_mean: float
-    control_post_mean: float
-    treatment_pre_mean: float
-    treatment_post_mean: float
+class ConversionDiffInDiffResults:
+    control_pre_rate: float
+    control_post_rate: float
+    treatment_pre_rate: float
+    treatment_post_rate: float
     control_change: float
     treatment_change: float
     diff_in_diff: float
@@ -144,57 +144,58 @@ class MagnitudeDiffInDiffResults:
     is_significant: bool
     confidence: int
     p_value: float
-    t_statistic: float
-    degrees_of_freedom: float
+    z_statistic: float
     confidence_interval_lower: float
     confidence_interval_upper: float
-    control_pre_n: int
-    control_pre_std: float
-    control_post_n: int
-    control_post_std: float
-    treatment_pre_n: int
-    treatment_pre_std: float
-    treatment_post_n: int
-    treatment_post_std: float
+    control_pre_visitors: int
+    control_pre_conversions: int
+    control_post_visitors: int
+    control_post_conversions: int
+    treatment_pre_visitors: int
+    treatment_pre_conversions: int
+    treatment_post_visitors: int
+    treatment_post_conversions: int
     recommendation: str
 
 
-class MagnitudeEffect(FullOutcomeEffect):
+class ConversionEffect(FullOutcomeEffect):
     
     def sample_size(
         self,
-        current_mean: float,
-        current_std: float,
-        lift_percent: float = 5,
+        current_rate: float,
+        lift_percent: float = 10,
         confidence: int = 95,
         power: int = 80,
         num_variants: int = 2,
-    ) -> MagnitudeSampleSizePlan:
-        lift_decimal = lift_percent / 100
-        expected_mean = current_mean * (1 + lift_decimal)
-        absolute_effect = abs(expected_mean - current_mean)
+    ) -> ConversionSampleSizePlan:
+        if current_rate > 1:
+            current_rate = current_rate / 100
         
-        if absolute_effect == 0:
-            raise ValueError("lift_percent cannot be zero")
-        if current_std <= 0:
-            raise ValueError("current_std must be positive")
+        lift_decimal = lift_percent / 100
+        expected_rate = current_rate * (1 + lift_decimal)
+        
+        if expected_rate > 1:
+            raise ValueError(f"Expected rate ({expected_rate:.1%}) exceeds 100%. Lower your lift_percent.")
+        if expected_rate < 0:
+            raise ValueError(f"Expected rate cannot be negative. Check your lift_percent.")
+        if current_rate <= 0 or current_rate >= 1:
+            raise ValueError(f"current_rate must be between 0 and 1 (or 0% and 100%)")
         if num_variants < 2:
             raise ValueError("num_variants must be at least 2")
         
-        result = sample_size_two_means(
-            effect_size=absolute_effect,
-            std=current_std,
+        result = sample_size_two_proportions(
+            p1=current_rate,
+            p2=expected_rate,
             confidence=confidence,
             power=power,
             num_groups=num_variants,
         )
         
-        return MagnitudeSampleSizePlan(
+        return ConversionSampleSizePlan(
             visitors_per_variant=result.n_per_group,
             total_visitors=result.n_total,
-            current_mean=current_mean,
-            expected_mean=expected_mean,
-            standard_deviation=current_std,
+            current_rate=current_rate,
+            expected_rate=expected_rate,
             lift_percent=lift_percent,
             confidence=confidence,
             power=power,
@@ -203,40 +204,36 @@ class MagnitudeEffect(FullOutcomeEffect):
     def analyze(
         self,
         control_visitors: int,
-        control_mean: float,
-        control_std: float,
+        control_conversions: int,
         variant_visitors: int,
-        variant_mean: float,
-        variant_std: float,
+        variant_conversions: int,
         confidence: int = 95,
-    ) -> MagnitudeTestResults:
-        if control_visitors <= 0 or variant_visitors <= 0:
-            raise ValueError("visitors must be positive")
-        if control_std < 0 or variant_std < 0:
-            raise ValueError("standard deviation cannot be negative")
+    ) -> ConversionTestResults:
+        if control_conversions > control_visitors:
+            raise ValueError("control_conversions cannot exceed control_visitors")
+        if variant_conversions > variant_visitors:
+            raise ValueError("variant_conversions cannot exceed variant_visitors")
         
-        lift_absolute, lift_percent = lift_calculations(control_mean, variant_mean)
+        p1 = control_conversions / control_visitors
+        p2 = variant_conversions / variant_visitors
         
-        test_result = welch_t_test(
-            control_mean, control_std, control_visitors,
-            variant_mean, variant_std, variant_visitors,
-            confidence,
-        )
+        lift_absolute, lift_percent = lift_calculations(p1, p2)
         
-        se = mean_difference_se(control_std, control_visitors, variant_std, variant_visitors)
-        df = welch_df(control_std**2, variant_std**2, control_visitors, variant_visitors)
-        t_crit = t_critical(df, confidence)
-        ci_lower = lift_absolute - t_crit * se
-        ci_upper = lift_absolute + t_crit * se
+        test_result = z_test_two_proportions(p1, control_visitors, p2, variant_visitors, confidence)
+        
+        se_diff = proportion_difference_se(p1, control_visitors, p2, variant_visitors)
+        z_crit = get_z_alpha(confidence)
+        ci_lower = lift_absolute - z_crit * se_diff
+        ci_upper = lift_absolute + z_crit * se_diff
         
         if test_result.is_significant:
-            winner = "variant" if variant_mean > control_mean else "control"
+            winner = "variant" if p2 > p1 else "control"
         else:
             winner = "no winner yet"
         
-        result = MagnitudeTestResults(
-            control_mean=control_mean,
-            variant_mean=variant_mean,
+        result = ConversionTestResults(
+            control_rate=p1,
+            variant_rate=p2,
             lift_percent=lift_percent,
             lift_absolute=lift_absolute,
             is_significant=test_result.is_significant,
@@ -245,9 +242,9 @@ class MagnitudeEffect(FullOutcomeEffect):
             confidence_interval_lower=ci_lower,
             confidence_interval_upper=ci_upper,
             control_visitors=control_visitors,
-            control_std=control_std,
+            control_conversions=control_conversions,
             variant_visitors=variant_visitors,
-            variant_std=variant_std,
+            variant_conversions=variant_conversions,
             winner=winner,
             recommendation="",
         )
@@ -256,46 +253,44 @@ class MagnitudeEffect(FullOutcomeEffect):
         
         return result
     
-    def _generate_recommendation(self, result: MagnitudeTestResults, currency: str = "$") -> str:
-        direction = "higher" if result.variant_mean > result.control_mean else "lower"
+    def _generate_recommendation(self, result: ConversionTestResults) -> str:
+        direction = "higher" if result.variant_rate > result.control_rate else "lower"
         
         if result.is_significant:
             return (
                 f"**Test variant is significantly {direction} than control** (p-value: {result.p_value:.4f}).\n\n"
                 f"_What this means:_ With {result.confidence}% confidence, the difference between "
-                f"variant ({currency}{result.variant_mean:,.2f}) and control ({currency}{result.control_mean:,.2f}) is statistically real, "
+                f"variant ({result.variant_rate:.2%}) and control ({result.control_rate:.2%}) is statistically real, "
                 f"not due to random chance. A p-value of {result.p_value:.4f} means there's only a "
                 f"{result.p_value * 100:.2f}% probability this result occurred by chance."
             )
         else:
             return (
                 f"**No significant difference detected** (p-value: {result.p_value:.4f}).\n\n"
-                f"_What this means:_ The observed difference between variant ({currency}{result.variant_mean:,.2f}) and "
-                f"control ({currency}{result.control_mean:,.2f}) could be due to random chance. A p-value of {result.p_value:.4f} "
+                f"_What this means:_ The observed difference between variant ({result.variant_rate:.2%}) and "
+                f"control ({result.control_rate:.2%}) could be due to random chance. A p-value of {result.p_value:.4f} "
                 f"is above the {1 - result.confidence/100:.2f} threshold needed for {result.confidence}% confidence. "
                 f"Consider running the test longer to collect more data."
             )
     
-    def _pairwise_welch_t_test(self, v1: MagnitudeVariant, v2: MagnitudeVariant, confidence: int) -> MagnitudePairwiseComparison:
-        lift_absolute, lift_percent = lift_calculations(v1.mean, v2.mean)
+    def _pairwise_z_test(self, v1: ConversionVariant, v2: ConversionVariant, confidence: int) -> ConversionPairwiseComparison:
+        p1 = v1.rate
+        p2 = v2.rate
         
-        test_result = welch_t_test(
-            v1.mean, v1.std, v1.visitors,
-            v2.mean, v2.std, v2.visitors,
-            confidence,
-        )
+        lift_absolute, lift_percent = lift_calculations(p1, p2)
         
-        se = mean_difference_se(v1.std, v1.visitors, v2.std, v2.visitors)
-        df = welch_df(v1.std**2, v2.std**2, v1.visitors, v2.visitors)
-        t_crit = t_critical(df, confidence)
-        ci_lower = lift_absolute - t_crit * se
-        ci_upper = lift_absolute + t_crit * se
+        test_result = z_test_two_proportions(p1, v1.visitors, p2, v2.visitors, confidence)
         
-        return MagnitudePairwiseComparison(
+        se_diff = proportion_difference_se(p1, v1.visitors, p2, v2.visitors)
+        z_crit = get_z_alpha(confidence)
+        ci_lower = lift_absolute - z_crit * se_diff
+        ci_upper = lift_absolute + z_crit * se_diff
+        
+        return ConversionPairwiseComparison(
             variant_a=v1.name,
             variant_b=v2.name,
-            mean_a=v1.mean,
-            mean_b=v2.mean,
+            rate_a=p1,
+            rate_b=p2,
             lift_percent=lift_percent,
             lift_absolute=lift_absolute,
             p_value=test_result.p_value,
@@ -310,7 +305,7 @@ class MagnitudeEffect(FullOutcomeEffect):
         variants: List[Dict[str, Any]],
         confidence: int = 95,
         correction: Literal["bonferroni", "none"] = "bonferroni",
-    ) -> MagnitudeMultiVariantResults:
+    ) -> ConversionMultiVariantResults:
         if len(variants) < 2:
             raise ValueError("At least 2 variants are required")
         
@@ -320,50 +315,34 @@ class MagnitudeEffect(FullOutcomeEffect):
         
         variant_objects = []
         for v in variants:
-            if v["visitors"] <= 0:
-                raise ValueError(f"visitors must be positive for variant '{v['name']}'")
-            if v.get("std", 0) < 0:
-                raise ValueError(f"std cannot be negative for variant '{v['name']}'")
-            variant_objects.append(MagnitudeVariant(
+            if v["conversions"] > v["visitors"]:
+                raise ValueError(f"conversions cannot exceed visitors for variant '{v['name']}'")
+            variant_objects.append(ConversionVariant(
                 name=v["name"],
                 visitors=v["visitors"],
-                mean=v["mean"],
-                std=v.get("std", 0),
+                conversions=v["conversions"],
             ))
         
-        k = len(variant_objects)
-        N = sum(v.visitors for v in variant_objects)
+        observed = []
+        for v in variant_objects:
+            observed.append([v.conversions, v.visitors - v.conversions])
         
-        grand_mean = sum(v.mean * v.visitors for v in variant_objects) / N
-        
-        ss_between = sum(v.visitors * (v.mean - grand_mean) ** 2 for v in variant_objects)
-        
-        ss_within = sum((v.visitors - 1) * v.std ** 2 for v in variant_objects)
-        
-        df_between = k - 1
-        df_within = N - k
-        
-        ms_between = ss_between / df_between if df_between > 0 else 0
-        ms_within = ss_within / df_within if df_within > 0 else 1
-        
-        f_stat = ms_between / ms_within if ms_within > 0 else 0
-        
-        p_value = 1 - f_dist.cdf(f_stat, df_between, df_within) if f_stat > 0 else 1.0
+        chi2, p_value, dof, expected = chi2_contingency(observed)
         
         alpha = 1 - (confidence / 100)
         is_significant = p_value < alpha
         
-        means = [(v.name, v.mean) for v in variant_objects]
-        means_sorted = sorted(means, key=lambda x: x[1], reverse=True)
-        best_variant = means_sorted[0][0]
-        worst_variant = means_sorted[-1][0]
+        rates = [(v.name, v.rate) for v in variant_objects]
+        rates_sorted = sorted(rates, key=lambda x: x[1], reverse=True)
+        best_variant = rates_sorted[0][0]
+        worst_variant = rates_sorted[-1][0]
         
         pairwise = []
-        num_comparisons = k * (k - 1) // 2
+        num_comparisons = len(variant_objects) * (len(variant_objects) - 1) // 2
         
         for i in range(len(variant_objects)):
             for j in range(i + 1, len(variant_objects)):
-                comparison = self._pairwise_welch_t_test(variant_objects[i], variant_objects[j], confidence)
+                comparison = self._pairwise_z_test(variant_objects[i], variant_objects[j], confidence)
                 
                 if correction == "bonferroni":
                     comparison.p_value_adjusted = bonferroni_correction(comparison.p_value, num_comparisons)
@@ -375,14 +354,13 @@ class MagnitudeEffect(FullOutcomeEffect):
             variant_objects, is_significant, p_value, best_variant, pairwise, confidence
         )
         
-        return MagnitudeMultiVariantResults(
+        return ConversionMultiVariantResults(
             variants=variant_objects,
             is_significant=is_significant,
             confidence=confidence,
             p_value=p_value,
-            f_statistic=f_stat,
-            df_between=df_between,
-            df_within=df_within,
+            test_statistic=chi2,
+            degrees_of_freedom=dof,
             best_variant=best_variant,
             worst_variant=worst_variant,
             pairwise_comparisons=pairwise,
@@ -391,11 +369,11 @@ class MagnitudeEffect(FullOutcomeEffect):
     
     def _generate_multi_recommendation(
         self,
-        variants: List[MagnitudeVariant],
+        variants: List[ConversionVariant],
         is_significant: bool,
         p_value: float,
         best_variant: str,
-        pairwise: List[MagnitudePairwiseComparison],
+        pairwise: List[ConversionPairwiseComparison],
         confidence: int,
     ) -> str:
         if is_significant:
@@ -407,8 +385,8 @@ class MagnitudeEffect(FullOutcomeEffect):
             return (
                 f"**Significant differences detected across variants** (p-value: {p_value:.4f}).\n\n"
                 f"_What this means:_ With {confidence}% confidence, at least one variant performs "
-                f"differently from the others. **{best_variant}** has the highest mean value "
-                f"({best.mean:,.2f}). "
+                f"differently from the others. **{best_variant}** has the highest conversion rate "
+                f"({best.rate:.2%}). "
                 f"{'It significantly outperforms ' + str(len(sig_wins)) + ' other variant(s) in pairwise comparisons.' if sig_wins else 'Check pairwise comparisons for details.'}"
             )
         else:
@@ -422,45 +400,37 @@ class MagnitudeEffect(FullOutcomeEffect):
     def confidence_interval(
         self,
         visitors: int,
-        mean: float,
-        std: float,
+        conversions: int,
         confidence: int = 95,
-    ) -> MagnitudeConfidenceInterval:
-        if visitors <= 1:
-            raise ValueError("visitors must be greater than 1")
-        if std < 0:
-            raise ValueError("standard deviation cannot be negative")
+    ) -> ConversionConfidenceInterval:
+        if conversions > visitors:
+            raise ValueError("conversions cannot exceed visitors")
+        if visitors <= 0:
+            raise ValueError("visitors must be positive")
         
-        _, lower, upper, margin = calc_mean_ci(mean, std, visitors, confidence)
+        rate, lower, upper, margin = proportion_ci(conversions, visitors, confidence, method="wilson")
         
-        return MagnitudeConfidenceInterval(
-            mean=mean,
+        return ConversionConfidenceInterval(
+            rate=rate,
             lower=lower,
             upper=upper,
             confidence=confidence,
             margin_of_error=margin,
         )
     
-    def summarize(
-        self,
-        result: MagnitudeTestResults,
-        test_name: str = "Revenue Test",
-        metric_name: str = "Average Order Value",
-        currency: str = "$",
-    ) -> str:
+    def summarize(self, result: ConversionTestResults, test_name: str = "A/B Test") -> str:
         lines = []
         lines.append(f"## 📊 {test_name} Results\n")
         
-        direction = "higher" if result.variant_mean > result.control_mean else "lower"
+        direction = "higher" if result.variant_rate > result.control_rate else "lower"
         abs_direction = "increase" if result.lift_percent > 0 else "decrease"
         
         if result.is_significant:
             lines.append(f"### ✅ Significant Result\n")
-            lines.append(f"**The test variant's {metric_name.lower()} is significantly {direction} than control.**\n")
-            lines.append(f"- **Control {metric_name.lower()}:** {currency}{result.control_mean:,.2f} (n={result.control_visitors:,}, std={currency}{result.control_std:,.2f})")
-            lines.append(f"- **Variant {metric_name.lower()}:** {currency}{result.variant_mean:,.2f} (n={result.variant_visitors:,}, std={currency}{result.variant_std:,.2f})")
+            lines.append(f"**The test variant performed significantly {direction} than the control.**\n")
+            lines.append(f"- **Control conversion rate:** {result.control_rate:.2%} ({result.control_conversions:,} / {result.control_visitors:,})")
+            lines.append(f"- **Variant conversion rate:** {result.variant_rate:.2%} ({result.variant_conversions:,} / {result.variant_visitors:,})")
             lines.append(f"- **Relative lift:** {result.lift_percent:+.1f}% {abs_direction}")
-            lines.append(f"- **Absolute difference:** {currency}{result.lift_absolute:+,.2f}")
             lines.append(f"- **P-value:** {result.p_value:.4f}")
             lines.append(f"- **Confidence level:** {result.confidence}%\n")
             lines.append(f"### 📝 What This Means\n")
@@ -468,31 +438,25 @@ class MagnitudeEffect(FullOutcomeEffect):
             lines.append(f"The p-value of **{result.p_value:.4f}** indicates there's only a **{result.p_value * 100:.2f}%** chance ")
             lines.append(f"this result is due to random variation. ")
             if result.winner == "variant":
-                lines.append(f"The variant shows a **{currency}{abs(result.lift_absolute):,.2f}** ({abs(result.lift_percent):.1f}%) improvement over control.")
+                lines.append(f"The variant shows a **{abs(result.lift_percent):.1f}%** improvement over control.")
             else:
-                lines.append(f"The control outperforms the variant by **{currency}{abs(result.lift_absolute):,.2f}** ({abs(result.lift_percent):.1f}%).")
+                lines.append(f"The control outperforms the variant by **{abs(result.lift_percent):.1f}%**.")
         else:
             lines.append(f"### ⏳ Not Yet Significant\n")
             lines.append(f"**No statistically significant difference detected between control and variant.**\n")
-            lines.append(f"- **Control {metric_name.lower()}:** {currency}{result.control_mean:,.2f} (n={result.control_visitors:,}, std={currency}{result.control_std:,.2f})")
-            lines.append(f"- **Variant {metric_name.lower()}:** {currency}{result.variant_mean:,.2f} (n={result.variant_visitors:,}, std={currency}{result.variant_std:,.2f})")
-            lines.append(f"- **Observed lift:** {result.lift_percent:+.1f}% ({currency}{result.lift_absolute:+,.2f})")
+            lines.append(f"- **Control conversion rate:** {result.control_rate:.2%} ({result.control_conversions:,} / {result.control_visitors:,})")
+            lines.append(f"- **Variant conversion rate:** {result.variant_rate:.2%} ({result.variant_conversions:,} / {result.variant_visitors:,})")
+            lines.append(f"- **Observed lift:** {result.lift_percent:+.1f}%")
             lines.append(f"- **P-value:** {result.p_value:.4f}")
             lines.append(f"- **Required confidence:** {result.confidence}%\n")
             lines.append(f"### 📝 What This Means\n")
             lines.append(f"The p-value of **{result.p_value:.4f}** is above the **{(1 - result.confidence/100):.2f}** threshold ")
-            lines.append(f"needed for {result.confidence}% confidence. The observed {currency}{abs(result.lift_absolute):,.2f} difference ")
+            lines.append(f"needed for {result.confidence}% confidence. The observed {abs(result.lift_percent):.1f}% difference ")
             lines.append(f"could be due to random chance. Continue running the test to gather more data.")
         
         return "\n".join(lines)
     
-    def summarize_multi(
-        self,
-        result: MagnitudeMultiVariantResults,
-        test_name: str = "Multi-Variant Test",
-        metric_name: str = "Average Value",
-        currency: str = "$",
-    ) -> str:
+    def summarize_multi(self, result: ConversionMultiVariantResults, test_name: str = "Multi-Variant Test") -> str:
         lines = []
         lines.append(f"## 📊 {test_name} Results\n")
         
@@ -503,18 +467,18 @@ class MagnitudeEffect(FullOutcomeEffect):
             lines.append(f"### ⏳ No Significant Differences\n")
             lines.append(f"**The observed differences could be due to random chance.**\n")
         
-        lines.append(f"### Variant Performance ({metric_name})\n")
-        lines.append(f"| Variant | Sample Size | Mean | Std Dev |")
-        lines.append(f"|---------|-------------|------|---------|")
+        lines.append(f"### Variant Performance\n")
+        lines.append(f"| Variant | Visitors | Conversions | Rate |")
+        lines.append(f"|---------|----------|-------------|------|")
         
-        sorted_variants = sorted(result.variants, key=lambda v: v.mean, reverse=True)
-        for v in sorted_variants:
+        sorted_variants = sorted(result.variants, key=lambda v: v.rate, reverse=True)
+        for i, v in enumerate(sorted_variants):
             marker = " 🏆" if v.name == result.best_variant else ""
-            lines.append(f"| {v.name}{marker} | {v.visitors:,} | {currency}{v.mean:,.2f} | {currency}{v.std:,.2f} |")
+            lines.append(f"| {v.name}{marker} | {v.visitors:,} | {v.conversions:,} | {v.rate:.2%} |")
         
-        lines.append(f"\n### Overall Test (ANOVA)\n")
-        lines.append(f"- **F-statistic:** {result.f_statistic:.2f}")
-        lines.append(f"- **Degrees of freedom:** ({result.df_between}, {result.df_within})")
+        lines.append(f"\n### Overall Test (Chi-Square)\n")
+        lines.append(f"- **Test statistic:** {result.test_statistic:.2f}")
+        lines.append(f"- **Degrees of freedom:** {result.degrees_of_freedom}")
         lines.append(f"- **P-value:** {result.p_value:.4f}")
         lines.append(f"- **Confidence level:** {result.confidence}%\n")
         
@@ -524,14 +488,14 @@ class MagnitudeEffect(FullOutcomeEffect):
             for p in sig_comparisons:
                 winner = p.variant_b if p.lift_percent > 0 else p.variant_a
                 loser = p.variant_a if p.lift_percent > 0 else p.variant_b
-                diff = abs(p.lift_absolute)
-                lines.append(f"- **{winner}** beats **{loser}** by {currency}{diff:,.2f} ({abs(p.lift_percent):.1f}%, p={p.p_value_adjusted:.4f})")
+                lift = abs(p.lift_percent)
+                lines.append(f"- **{winner}** beats **{loser}** by {lift:.1f}% (p={p.p_value_adjusted:.4f})")
             lines.append("")
         
         lines.append(f"### 📝 What This Means\n")
         if result.is_significant:
             lines.append(f"With {result.confidence}% confidence, there are real differences between your variants. ")
-            lines.append(f"**{result.best_variant}** has the highest {metric_name.lower()}. ")
+            lines.append(f"**{result.best_variant}** has the highest conversion rate. ")
             if sig_comparisons:
                 lines.append(f"The pairwise comparisons above show which specific differences are statistically significant ")
                 lines.append(f"(adjusted for multiple comparisons using Bonferroni correction).")
@@ -544,21 +508,14 @@ class MagnitudeEffect(FullOutcomeEffect):
         
         return "\n".join(lines)
     
-    def summarize_plan(
-        self,
-        plan: MagnitudeSampleSizePlan,
-        test_name: str = "Revenue Test",
-        metric_name: str = "Average Order Value",
-        currency: str = "$",
-    ) -> str:
+    def summarize_plan(self, plan: ConversionSampleSizePlan, test_name: str = "A/B Test") -> str:
         lines = []
         lines.append(f"## 📋 {test_name} Sample Size Plan\n")
         
-        lines.append(f"### Test Parameters ({metric_name})\n")
-        lines.append(f"- **Current mean:** {currency}{plan.current_mean:,.2f}")
-        lines.append(f"- **Standard deviation:** {currency}{plan.standard_deviation:,.2f}")
+        lines.append(f"### Test Parameters\n")
+        lines.append(f"- **Current conversion rate:** {plan.current_rate:.2%}")
         lines.append(f"- **Minimum detectable lift:** {plan.lift_percent:+.0f}%")
-        lines.append(f"- **Expected variant mean:** {currency}{plan.expected_mean:,.2f}")
+        lines.append(f"- **Expected variant rate:** {plan.expected_rate:.2%}")
         lines.append(f"- **Confidence level:** {plan.confidence}%")
         lines.append(f"- **Statistical power:** {plan.power}%\n")
         
@@ -578,7 +535,7 @@ class MagnitudeEffect(FullOutcomeEffect):
                 lines.append(f"Approximately **{months:.1f} months** ({plan.test_duration_days} days) to complete.\n")
         
         lines.append(f"### 📝 What This Means\n")
-        lines.append(f"If the variant truly improves {metric_name.lower()} by {plan.lift_percent}% or more, ")
+        lines.append(f"If the variant truly improves conversion by {plan.lift_percent}% or more, ")
         lines.append(f"this test has a **{plan.power}%** chance of detecting it. ")
         lines.append(f"There's a **{100 - plan.confidence}%** false positive risk ")
         lines.append(f"(declaring a winner when there's no real difference).")
@@ -587,62 +544,64 @@ class MagnitudeEffect(FullOutcomeEffect):
     
     def diff_in_diff(
         self,
-        control_pre_n: int,
-        control_pre_mean: float,
-        control_pre_std: float,
-        control_post_n: int,
-        control_post_mean: float,
-        control_post_std: float,
-        treatment_pre_n: int,
-        treatment_pre_mean: float,
-        treatment_pre_std: float,
-        treatment_post_n: int,
-        treatment_post_mean: float,
-        treatment_post_std: float,
+        control_pre_visitors: int,
+        control_pre_conversions: int,
+        control_post_visitors: int,
+        control_post_conversions: int,
+        treatment_pre_visitors: int,
+        treatment_pre_conversions: int,
+        treatment_post_visitors: int,
+        treatment_post_conversions: int,
         confidence: int = 95,
-    ) -> MagnitudeDiffInDiffResults:
-        if any(n <= 0 for n in [control_pre_n, control_post_n, treatment_pre_n, treatment_post_n]):
-            raise ValueError("All sample sizes must be positive")
-        if any(s < 0 for s in [control_pre_std, control_post_std, treatment_pre_std, treatment_post_std]):
-            raise ValueError("Standard deviations cannot be negative")
+    ) -> ConversionDiffInDiffResults:
+        if control_pre_conversions > control_pre_visitors:
+            raise ValueError("control_pre_conversions cannot exceed control_pre_visitors")
+        if control_post_conversions > control_post_visitors:
+            raise ValueError("control_post_conversions cannot exceed control_post_visitors")
+        if treatment_pre_conversions > treatment_pre_visitors:
+            raise ValueError("treatment_pre_conversions cannot exceed treatment_pre_visitors")
+        if treatment_post_conversions > treatment_post_visitors:
+            raise ValueError("treatment_post_conversions cannot exceed treatment_post_visitors")
         
-        control_change = control_post_mean - control_pre_mean
-        treatment_change = treatment_post_mean - treatment_pre_mean
+        p_c_pre = control_pre_conversions / control_pre_visitors
+        p_c_post = control_post_conversions / control_post_visitors
+        p_t_pre = treatment_pre_conversions / treatment_pre_visitors
+        p_t_post = treatment_post_conversions / treatment_post_visitors
+        
+        control_change = p_c_post - p_c_pre
+        treatment_change = p_t_post - p_t_pre
         
         did = treatment_change - control_change
         
-        did_percent = (did / treatment_pre_mean * 100) if treatment_pre_mean != 0 else 0
+        did_percent = (did / p_t_pre * 100) if p_t_pre > 0 else 0
         
-        var_c_pre = control_pre_std ** 2 / control_pre_n
-        var_c_post = control_post_std ** 2 / control_post_n
-        var_t_pre = treatment_pre_std ** 2 / treatment_pre_n
-        var_t_post = treatment_post_std ** 2 / treatment_post_n
+        var_c_pre = p_c_pre * (1 - p_c_pre) / control_pre_visitors
+        var_c_post = p_c_post * (1 - p_c_post) / control_post_visitors
+        var_t_pre = p_t_pre * (1 - p_t_pre) / treatment_pre_visitors
+        var_t_post = p_t_post * (1 - p_t_post) / treatment_post_visitors
         
         se_did = math.sqrt(var_c_pre + var_c_post + var_t_pre + var_t_post)
         
         alpha = 1 - (confidence / 100)
+        z_crit = norm.ppf(1 - alpha / 2)
         
-        total_n = control_pre_n + control_post_n + treatment_pre_n + treatment_post_n
-        df = total_n - 4
-        
-        if se_did > 0 and df > 0:
-            t_stat = did / se_did
-            p_value = 2 * (1 - t.cdf(abs(t_stat), df))
+        if se_did > 0:
+            z_stat = did / se_did
+            p_value = 2 * (1 - norm.cdf(abs(z_stat)))
         else:
-            t_stat = 0
+            z_stat = 0
             p_value = 1.0
         
-        t_crit = t.ppf(1 - alpha / 2, df) if df > 0 else norm.ppf(1 - alpha / 2)
-        ci_lower = did - t_crit * se_did
-        ci_upper = did + t_crit * se_did
+        ci_lower = did - z_crit * se_did
+        ci_upper = did + z_crit * se_did
         
         is_significant = p_value < alpha
         
-        result = MagnitudeDiffInDiffResults(
-            control_pre_mean=control_pre_mean,
-            control_post_mean=control_post_mean,
-            treatment_pre_mean=treatment_pre_mean,
-            treatment_post_mean=treatment_post_mean,
+        result = ConversionDiffInDiffResults(
+            control_pre_rate=p_c_pre,
+            control_post_rate=p_c_post,
+            treatment_pre_rate=p_t_pre,
+            treatment_post_rate=p_t_post,
             control_change=control_change,
             treatment_change=treatment_change,
             diff_in_diff=did,
@@ -650,18 +609,17 @@ class MagnitudeEffect(FullOutcomeEffect):
             is_significant=is_significant,
             confidence=confidence,
             p_value=p_value,
-            t_statistic=t_stat,
-            degrees_of_freedom=df,
+            z_statistic=z_stat,
             confidence_interval_lower=ci_lower,
             confidence_interval_upper=ci_upper,
-            control_pre_n=control_pre_n,
-            control_pre_std=control_pre_std,
-            control_post_n=control_post_n,
-            control_post_std=control_post_std,
-            treatment_pre_n=treatment_pre_n,
-            treatment_pre_std=treatment_pre_std,
-            treatment_post_n=treatment_post_n,
-            treatment_post_std=treatment_post_std,
+            control_pre_visitors=control_pre_visitors,
+            control_pre_conversions=control_pre_conversions,
+            control_post_visitors=control_post_visitors,
+            control_post_conversions=control_post_conversions,
+            treatment_pre_visitors=treatment_pre_visitors,
+            treatment_pre_conversions=treatment_pre_conversions,
+            treatment_post_visitors=treatment_post_visitors,
+            treatment_post_conversions=treatment_post_conversions,
             recommendation="",
         )
         
@@ -669,81 +627,74 @@ class MagnitudeEffect(FullOutcomeEffect):
         
         return result
     
-    def _generate_did_recommendation(self, result: MagnitudeDiffInDiffResults, currency: str = "$") -> str:
+    def _generate_did_recommendation(self, result: ConversionDiffInDiffResults) -> str:
         direction = "positive" if result.diff_in_diff > 0 else "negative"
         
         if result.is_significant:
             return (
                 f"**Significant treatment effect detected** (p-value: {result.p_value:.4f}).\n\n"
                 f"_What this means:_ The treatment group showed a **{direction}** effect beyond what would be "
-                f"expected from the control group's trend. The treatment changed the metric by "
-                f"**{currency}{result.diff_in_diff:+,.2f}** ({result.diff_in_diff_percent:+.1f}% relative) more than the control. "
+                f"expected from the control group's trend. The treatment changed conversion by "
+                f"**{result.diff_in_diff:+.2%}** ({result.diff_in_diff_percent:+.1f}% relative) more than the control. "
                 f"With {result.confidence}% confidence, this effect is statistically real."
             )
         else:
             return (
                 f"**No significant treatment effect detected** (p-value: {result.p_value:.4f}).\n\n"
-                f"_What this means:_ The observed difference-in-differences of {currency}{result.diff_in_diff:+,.2f} "
+                f"_What this means:_ The observed difference-in-differences of {result.diff_in_diff:+.2%} "
                 f"could be due to random chance. The treatment group's change was not significantly different "
                 f"from the control group's change. Consider collecting more data or the effect may be too small to detect."
             )
     
-    def summarize_diff_in_diff(
-        self,
-        result: MagnitudeDiffInDiffResults,
-        test_name: str = "Difference-in-Differences Analysis",
-        metric_name: str = "Average Value",
-        currency: str = "$",
-    ) -> str:
+    def summarize_diff_in_diff(self, result: ConversionDiffInDiffResults, test_name: str = "Difference-in-Differences Analysis") -> str:
         lines = []
         lines.append(f"## 📊 {test_name}\n")
         
         if result.is_significant:
             lines.append(f"### ✅ Significant Treatment Effect\n")
             direction = "increase" if result.diff_in_diff > 0 else "decrease"
-            lines.append(f"**The treatment caused a significant {direction} in {metric_name.lower()}.**\n")
+            lines.append(f"**The treatment caused a significant {direction} in conversion rate.**\n")
         else:
             lines.append(f"### ⏳ No Significant Treatment Effect\n")
             lines.append(f"**The treatment effect is not statistically significant.**\n")
         
-        lines.append(f"### {metric_name}\n")
+        lines.append(f"### Conversion Rates\n")
         lines.append(f"| Group | Pre-Period | Post-Period | Change |")
         lines.append(f"|-------|------------|-------------|--------|")
-        lines.append(f"| Control | {currency}{result.control_pre_mean:,.2f} | {currency}{result.control_post_mean:,.2f} | {currency}{result.control_change:+,.2f} |")
-        lines.append(f"| Treatment | {currency}{result.treatment_pre_mean:,.2f} | {currency}{result.treatment_post_mean:,.2f} | {currency}{result.treatment_change:+,.2f} |")
+        lines.append(f"| Control | {result.control_pre_rate:.2%} | {result.control_post_rate:.2%} | {result.control_change:+.2%} |")
+        lines.append(f"| Treatment | {result.treatment_pre_rate:.2%} | {result.treatment_post_rate:.2%} | {result.treatment_change:+.2%} |")
         lines.append("")
         
         lines.append(f"### Difference-in-Differences Estimate\n")
-        lines.append(f"- **DiD Effect:** {currency}{result.diff_in_diff:+,.2f} ({result.diff_in_diff_percent:+.1f}% relative)")
-        lines.append(f"- **95% CI:** [{currency}{result.confidence_interval_lower:,.2f}, {currency}{result.confidence_interval_upper:,.2f}]")
-        lines.append(f"- **T-statistic:** {result.t_statistic:.2f}")
-        lines.append(f"- **Degrees of freedom:** {result.degrees_of_freedom:.0f}")
+        lines.append(f"- **DiD Effect:** {result.diff_in_diff:+.2%} ({result.diff_in_diff_percent:+.1f}% relative)")
+        lines.append(f"- **95% CI:** [{result.confidence_interval_lower:.2%}, {result.confidence_interval_upper:.2%}]")
+        lines.append(f"- **Z-statistic:** {result.z_statistic:.2f}")
         lines.append(f"- **P-value:** {result.p_value:.4f}")
         lines.append(f"- **Confidence level:** {result.confidence}%\n")
         
         lines.append(f"### Sample Sizes\n")
         lines.append(f"| Group | Pre-Period | Post-Period |")
         lines.append(f"|-------|------------|-------------|")
-        lines.append(f"| Control | {result.control_pre_n:,} | {result.control_post_n:,} |")
-        lines.append(f"| Treatment | {result.treatment_pre_n:,} | {result.treatment_post_n:,} |")
+        lines.append(f"| Control | {result.control_pre_visitors:,} | {result.control_post_visitors:,} |")
+        lines.append(f"| Treatment | {result.treatment_pre_visitors:,} | {result.treatment_post_visitors:,} |")
         lines.append("")
         
         lines.append(f"### 📝 What This Means\n")
         if result.is_significant:
-            lines.append(f"The treatment group's {metric_name.lower()} changed by **{currency}{result.treatment_change:+,.2f}** ")
-            lines.append(f"while the control group changed by **{currency}{result.control_change:+,.2f}**. ")
-            lines.append(f"After accounting for the control group's trend, the treatment effect is **{currency}{result.diff_in_diff:+,.2f}**. ")
+            lines.append(f"The treatment group's conversion rate changed by **{result.treatment_change:+.2%}** ")
+            lines.append(f"while the control group changed by **{result.control_change:+.2%}**. ")
+            lines.append(f"After accounting for the control group's trend, the treatment effect is **{result.diff_in_diff:+.2%}**. ")
             lines.append(f"This effect is statistically significant at the {result.confidence}% confidence level.")
         else:
-            lines.append(f"The treatment group's {metric_name.lower()} changed by **{currency}{result.treatment_change:+,.2f}** ")
-            lines.append(f"while the control group changed by **{currency}{result.control_change:+,.2f}**. ")
-            lines.append(f"The difference ({currency}{result.diff_in_diff:+,.2f}) is not statistically significant. ")
+            lines.append(f"The treatment group's conversion rate changed by **{result.treatment_change:+.2%}** ")
+            lines.append(f"while the control group changed by **{result.control_change:+.2%}**. ")
+            lines.append(f"The difference ({result.diff_in_diff:+.2%}) is not statistically significant. ")
             lines.append(f"This could mean the treatment had no real effect, or the sample size is insufficient to detect it.")
         
         return "\n".join(lines)
 
 
-_default_instance = MagnitudeEffect()
+_default_instance = ConversionEffect()
 
 sample_size = _default_instance.sample_size
 analyze = _default_instance.analyze
@@ -755,23 +706,23 @@ summarize_plan = _default_instance.summarize_plan
 diff_in_diff = _default_instance.diff_in_diff
 summarize_diff_in_diff = _default_instance.summarize_diff_in_diff
 
-SampleSizePlan = MagnitudeSampleSizePlan
-TestResults = MagnitudeTestResults
-ConfidenceInterval = MagnitudeConfidenceInterval
-Variant = MagnitudeVariant
-PairwiseComparison = MagnitudePairwiseComparison
-MultiVariantResults = MagnitudeMultiVariantResults
-DiffInDiffResults = MagnitudeDiffInDiffResults
+SampleSizePlan = ConversionSampleSizePlan
+TestResults = ConversionTestResults
+ConfidenceInterval = ConversionConfidenceInterval
+Variant = ConversionVariant
+PairwiseComparison = ConversionPairwiseComparison
+MultiVariantResults = ConversionMultiVariantResults
+DiffInDiffResults = ConversionDiffInDiffResults
 
 __all__ = [
-    "MagnitudeEffect",
-    "MagnitudeSampleSizePlan",
-    "MagnitudeTestResults",
-    "MagnitudeConfidenceInterval",
-    "MagnitudeVariant",
-    "MagnitudePairwiseComparison",
-    "MagnitudeMultiVariantResults",
-    "MagnitudeDiffInDiffResults",
+    "ConversionEffect",
+    "ConversionSampleSizePlan",
+    "ConversionTestResults",
+    "ConversionConfidenceInterval",
+    "ConversionVariant",
+    "ConversionPairwiseComparison",
+    "ConversionMultiVariantResults",
+    "ConversionDiffInDiffResults",
     "sample_size",
     "analyze",
     "analyze_multi",

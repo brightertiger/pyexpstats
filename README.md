@@ -1,28 +1,28 @@
 <p align="center">
-  <img src="static/logo.png" alt="pyexptest - Python A/B Testing and Experiment Analysis Library" width="400">
+  <img src="static/logo.png" alt="expstats - Python A/B Testing and Experiment Analysis Library" width="400">
 </p>
 
-<h1 align="center">pyexptest</h1>
+<h1 align="center">expstats</h1>
 
 <p align="center">
   <strong>A/B Testing Calculator & Statistical Significance Analysis for Python</strong>
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/pyexptest/"><img src="https://img.shields.io/pypi/v/pyexptest.svg" alt="PyPI version"></a>
-  <a href="https://pypi.org/project/pyexptest/"><img src="https://img.shields.io/pypi/pyversions/pyexptest.svg" alt="Python versions"></a>
-  <a href="https://github.com/ujjwal-ibm/pyexptest/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://pypi.org/project/expstats/"><img src="https://img.shields.io/pypi/v/expstats.svg" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/expstats/"><img src="https://img.shields.io/pypi/pyversions/expstats.svg" alt="Python versions"></a>
+  <a href="https://github.com/ujjwal-ibm/expstats/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
 </p>
 
 <p align="center">
-  <a href="https://pyexptest.vercel.app"><strong>🚀 Try the Live Calculator → pyexptest.vercel.app</strong></a>
+  <a href="https://expstats.vercel.app"><strong>🚀 Try the Live Calculator → expstats.vercel.app</strong></a>
 </p>
 
 ---
 
-## What is pyexptest?
+## What is expstats?
 
-**pyexptest** is a Python library and web-based A/B testing calculator for experiment analysis, sample size calculation, and statistical significance testing. Whether you're running conversion rate optimization (CRO) experiments, analyzing split tests, or calculating statistical power, pyexptest provides the tools you need.
+**expstats** is a Python library and web-based A/B testing calculator for experiment analysis, sample size calculation, and statistical significance testing. Whether you're running conversion rate optimization (CRO) experiments, analyzing split tests, or calculating statistical power, expstats provides the tools you need.
 
 ### Key Features
 
@@ -42,7 +42,7 @@
 
 No installation needed! Use our **free online A/B testing calculator** at:
 
-### **[pyexptest.vercel.app](https://pyexptest.vercel.app)**
+### **[expstats.vercel.app](https://expstats.vercel.app)**
 
 <p align="center">
   <img src="static/interface.png" alt="A/B Test Calculator - Sample Size and Statistical Significance Calculator Interface" width="700">
@@ -68,15 +68,15 @@ Calculate sample sizes, analyze experiment results, and determine statistical si
 
 ---
 
-## Why pyexptest?
+## Why expstats?
 
-| Traditional Tools | pyexptest |
+| Traditional Tools | expstats |
 |-------------------|-----------|
 | "Which statistical test?" | "What changed in user behavior?" |
 | Test-centric | Effect-centric |
 | Complex statistics | Plain-language results |
 
-pyexptest models experimental impact across three fundamental **outcome dimensions**:
+expstats models experimental impact across three fundamental **outcome dimensions**:
 
 | Effect Type | Question Answered | Examples |
 |-------------|-------------------|----------|
@@ -89,7 +89,7 @@ pyexptest models experimental impact across three fundamental **outcome dimensio
 ## Installation
 
 ```bash
-pip install pyexptest
+pip install expstats
 ```
 
 **Requirements:** Python 3.8+
@@ -99,7 +99,7 @@ pip install pyexptest
 ## Quick Start
 
 ```python
-from pyexptest import conversion, magnitude, timing
+from expstats import conversion, magnitude, timing
 
 # Conversion: Did the treatment change whether users purchase?
 result = conversion.analyze(
@@ -140,7 +140,7 @@ Use for **binary outcomes**: did the user convert or not? Perfect for analyzing 
 ### Analyze an A/B Test
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 result = conversion.analyze(
     control_visitors=10000,
@@ -212,7 +212,7 @@ Use for **continuous metrics**: revenue per user, average order value, time on s
 ### Analyze Revenue or Continuous Metrics
 
 ```python
-from pyexptest import magnitude
+from expstats import magnitude
 
 result = magnitude.analyze(
     control_visitors=5000,
@@ -280,7 +280,7 @@ Use for **time-to-event analysis**: time to purchase, time to churn, subscriptio
 ### Survival Analysis (Log-Rank Test)
 
 ```python
-from pyexptest import timing
+from expstats import timing
 
 result = timing.analyze(
     control_times=[5, 8, 12, 15, 18, 22, 25, 30],
@@ -378,14 +378,14 @@ With 95% confidence, the variant shows a **20.0%** improvement.
 
 ## 🌐 Web Interface
 
-pyexptest includes a beautiful web UI for interactive experiment analysis:
+expstats includes a beautiful web UI for interactive experiment analysis:
 
 ```bash
-pyexptest-server
+expstats-server
 # Open http://localhost:8000
 ```
 
-Or use the hosted version at **[pyexptest.vercel.app](https://pyexptest.vercel.app)**
+Or use the hosted version at **[expstats.vercel.app](https://expstats.vercel.app)**
 
 ### Configuration
 
@@ -398,7 +398,7 @@ Configure the API server using environment variables:
 For production, set appropriate CORS origins:
 
 ```bash
-CORS_ORIGINS="https://yourdomain.com" pyexptest-server
+CORS_ORIGINS="https://yourdomain.com" expstats-server
 ```
 
 ### Web Calculator Features
@@ -461,7 +461,7 @@ The web interface includes:
 ## Module Structure
 
 ```
-pyexptest/
+expstats/
   effects/
     outcome/
       conversion.py    # Binary outcomes (signup, purchase, click)
@@ -517,7 +517,7 @@ A 95% confidence interval means: if you ran this experiment 100 times, about 95 
 
 ## Use Cases
 
-pyexptest is used for:
+expstats is used for:
 
 - **Conversion Rate Optimization (CRO)** — Optimize landing pages, signup flows, checkout
 - **Product Experimentation** — Test new features, UI changes, pricing

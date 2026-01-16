@@ -6,10 +6,10 @@ from pydantic import BaseModel, Field
 from typing import Literal, Optional, List
 import os
 
-from pyexptest.effects.outcome import conversion, magnitude, timing
+from expstats.effects.outcome import conversion, magnitude, timing
 
 app = FastAPI(
-    title="pyexptest API",
+    title="expstats API",
     description="Simple A/B testing tools for marketers and analysts",
     version="0.1.0",
 )

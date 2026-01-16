@@ -4,7 +4,7 @@ This guide will get you running your first A/B test analysis in under 5 minutes.
 
 ## Choose Your Module
 
-pyexptest has three main modules:
+expstats has three main modules:
 
 | Module | Use When |
 |--------|----------|
@@ -20,7 +20,7 @@ You ran an A/B test on your signup button. Here's what happened:
 - **Variant**: 10,000 visitors, 600 signups (6.0%)
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 result = conversion.analyze(
     control_visitors=10000,
@@ -49,7 +49,7 @@ You tested a new checkout flow. Here's what happened:
 - **Variant**: 5,000 orders, $52.50 average, $25 std dev
 
 ```python
-from pyexptest import magnitude
+from expstats import magnitude
 
 result = magnitude.analyze(
     control_visitors=5000,
@@ -70,7 +70,7 @@ print(f"Significant: {result.is_significant}")
 You want to know if a new onboarding flow speeds up first purchase:
 
 ```python
-from pyexptest import timing
+from expstats import timing
 
 # Days until first purchase (1=purchased, 0=didn't purchase by day 30)
 result = timing.analyze(
@@ -91,7 +91,7 @@ print(f"Significant: {result.is_significant}")
 Compare support ticket rates between two product versions:
 
 ```python
-from pyexptest import timing
+from expstats import timing
 
 result = timing.analyze_rates(
     control_events=45,          # 45 tickets
@@ -111,7 +111,7 @@ print(f"Significant: {result.is_significant}")
 Before running a test, calculate how many visitors you need:
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 plan = conversion.sample_size(
     current_rate=5,      # Your current 5% conversion rate
@@ -131,7 +131,7 @@ print(f"Duration: {plan.test_duration_days} days")
 Test multiple variants at once:
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 result = conversion.analyze_multi(
     variants=[
@@ -152,7 +152,7 @@ print(f"P-value: {result.p_value:.4f}")
 Create a shareable report for stakeholders:
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 result = conversion.analyze(
     control_visitors=10000,
@@ -190,7 +190,7 @@ The variant shows a **20.0%** improvement over control.
 For a visual, interactive experience:
 
 ```bash
-pyexptest-server
+expstats-server
 # Open http://localhost:8000
 ```
 

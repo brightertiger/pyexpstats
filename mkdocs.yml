@@ -1,8 +1,8 @@
-site_name: pyexptest
+site_name: expstats
 site_description: Simple A/B testing tools for marketers, analysts, and product teams
-site_url: https://pyexptest.readthedocs.io
-repo_url: https://github.com/pyexptest/pyexptest
-repo_name: pyexptest/pyexptest
+site_url: https://expstats.readthedocs.io
+repo_url: https://github.com/expstats/expstats
+repo_name: expstats/expstats
 
 theme:
   name: material
@@ -84,6 +84,6 @@ markdown_extensions:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/pyexptest/pyexptest
+      link: https://github.com/expstats/expstats
     - icon: fontawesome/brands/python
-      link: https://pypi.org/project/pyexptest/
+      link: https://pypi.org/project/expstats/

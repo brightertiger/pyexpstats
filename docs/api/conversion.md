@@ -68,7 +68,7 @@ Set daily traffic to calculate estimated test duration.
 ### Example
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 plan = conversion.sample_size(
     current_rate=5,       # 5% conversion rate
@@ -132,7 +132,7 @@ def analyze(
 ### Example
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 result = conversion.analyze(
     control_visitors=10000,
@@ -197,7 +197,7 @@ Each variant dictionary must have:
 ### Example
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 result = conversion.analyze_multi(
     variants=[
@@ -274,7 +274,7 @@ def diff_in_diff(
 ### Example
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 result = conversion.diff_in_diff(
     control_pre_visitors=5000,
@@ -328,7 +328,7 @@ def confidence_interval(
 ### Example
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 ci = conversion.confidence_interval(
     visitors=1000,
@@ -367,7 +367,7 @@ A markdown-formatted string suitable for sharing with stakeholders.
 ### Example
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 result = conversion.analyze(...)
 report = conversion.summarize(result, test_name="Homepage CTA Test")

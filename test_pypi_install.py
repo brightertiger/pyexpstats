@@ -1,10 +1,10 @@
-import pyexptest
-from pyexptest import conversion, magnitude, timing
+import expstats
+from expstats import conversion, magnitude, timing
 
 print("=" * 60)
-print("Testing pyexptest from PyPI installation")
+print("Testing expstats from PyPI installation")
 print("=" * 60)
-print(f"\nPackage version: {pyexptest.__version__}")
+print(f"\nPackage version: {expstats.__version__}")
 
 print("\n" + "=" * 60)
 print("1. CONVERSION EFFECT TESTS")
@@ -209,4 +209,4 @@ print(f"  Significant: {mag_did_result.is_significant}")
 print("\n" + "=" * 60)
 print("✅ ALL TESTS PASSED!")
 print("=" * 60)
-print("\nPackage pyexptest is working correctly from PyPI installation.")
+print("\nPackage expstats is working correctly from PyPI installation.")

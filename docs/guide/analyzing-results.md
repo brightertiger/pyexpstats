@@ -7,7 +7,7 @@ Once your test has collected enough data, it's time to analyze the results.
 ### Conversion Rate Test
 
 ```python
-from pyexptest import conversion
+from expstats import conversion
 
 result = conversion.analyze(
     control_visitors=10000,
@@ -28,7 +28,7 @@ print(f"Winner: {result.winner}")
 ### Revenue Test
 
 ```python
-from pyexptest import magnitude
+from expstats import magnitude
 
 result = magnitude.analyze(
     control_visitors=5000,

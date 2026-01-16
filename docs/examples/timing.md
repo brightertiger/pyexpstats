@@ -1,6 +1,6 @@
 # Timing Effect Examples
 
-Real-world examples of using pyexptest for time-to-event and rate analysis.
+Real-world examples of using expstats for time-to-event and rate analysis.
 
 ## Example 1: Time to First Purchase
 
@@ -9,7 +9,7 @@ You're testing a new onboarding flow to see if it speeds up first purchases.
 **Data:** Days until first purchase for each user (1=purchased, 0=didn't purchase by day 30)
 
 ```python
-from pyexptest import timing
+from expstats import timing
 
 # Control: Standard onboarding
 control_times = [5, 8, 12, 15, 18, 22, 25, 30, 30, 30, 30, 30]
@@ -53,7 +53,7 @@ Significant: True
 Testing if a UI redesign reduces support ticket volume.
 
 ```python
-from pyexptest import timing
+from expstats import timing
 
 result = timing.analyze_rates(
     control_events=156,         # 156 tickets
