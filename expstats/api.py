@@ -7,6 +7,10 @@ from typing import Literal, Optional, List
 import os
 
 from expstats.effects.outcome import conversion, magnitude, timing
+from expstats.methods import bayesian, sequential
+from expstats.diagnostics import srm, health, novelty
+from expstats.segments import analysis as segment_analysis
+from expstats.business import impact
 
 app = FastAPI(
     title="expstats API",
@@ -138,6 +142,90 @@ class MagnitudeDiffInDiffRequest(BaseModel):
     test_name: str = Field("Difference-in-Differences Analysis", description="Name for the summary report")
     metric_name: str = Field("Average Value", description="Name of the metric")
     currency: str = Field("$", description="Currency symbol")
+
+
+# Bayesian analysis models
+class BayesianAnalyzeRequest(BaseModel):
+    control_visitors: int = Field(..., gt=0, description="Number of visitors in control")
+    control_conversions: int = Field(..., ge=0, description="Number of conversions in control")
+    variant_visitors: int = Field(..., gt=0, description="Number of visitors in variant")
+    variant_conversions: int = Field(..., ge=0, description="Number of conversions in variant")
+    prior_alpha: float = Field(1, gt=0, description="Beta prior alpha parameter")
+    prior_beta: float = Field(1, gt=0, description="Beta prior beta parameter")
+    confidence_threshold: float = Field(0.95, gt=0, le=1, description="Probability threshold for winner")
+
+
+# Sequential testing models
+class SequentialAnalyzeRequest(BaseModel):
+    control_visitors: int = Field(..., gt=0, description="Number of visitors in control")
+    control_conversions: int = Field(..., ge=0, description="Number of conversions in control")
+    variant_visitors: int = Field(..., gt=0, description="Number of visitors in variant")
+    variant_conversions: int = Field(..., ge=0, description="Number of conversions in variant")
+    expected_visitors_per_variant: int = Field(..., gt=0, description="Planned sample size per variant")
+    alpha: float = Field(0.05, gt=0, lt=1, description="Significance level")
+    method: Literal["obrien-fleming", "pocock"] = Field("obrien-fleming", description="Boundary method")
+
+
+# Diagnostics models
+class SRMCheckRequest(BaseModel):
+    control_visitors: int = Field(..., ge=0, description="Visitors in control")
+    variant_visitors: int = Field(..., ge=0, description="Visitors in variant")
+    expected_ratio: float = Field(0.5, gt=0, lt=1, description="Expected control proportion")
+
+
+class HealthCheckRequest(BaseModel):
+    control_visitors: int = Field(..., gt=0, description="Visitors in control")
+    control_conversions: int = Field(..., ge=0, description="Conversions in control")
+    variant_visitors: int = Field(..., gt=0, description="Visitors in variant")
+    variant_conversions: int = Field(..., ge=0, description="Conversions in variant")
+    expected_visitors_per_variant: Optional[int] = Field(None, description="Planned sample size")
+    test_start_date: Optional[str] = Field(None, description="Test start date (YYYY-MM-DD)")
+    expected_ratio: float = Field(0.5, gt=0, lt=1, description="Expected traffic split")
+    minimum_sample_per_variant: int = Field(100, gt=0, description="Minimum sample required")
+    minimum_days: int = Field(7, gt=0, description="Minimum test duration")
+    num_peeks: int = Field(1, ge=1, description="Number of times results checked")
+
+
+class NoveltyDailyData(BaseModel):
+    day: int = Field(..., description="Day number")
+    control_visitors: int = Field(..., ge=0, description="Daily control visitors")
+    control_conversions: int = Field(..., ge=0, description="Daily control conversions")
+    variant_visitors: int = Field(..., ge=0, description="Daily variant visitors")
+    variant_conversions: int = Field(..., ge=0, description="Daily variant conversions")
+
+
+class NoveltyCheckRequest(BaseModel):
+    daily_results: List[NoveltyDailyData] = Field(..., description="Daily test results")
+    min_days: int = Field(7, gt=0, description="Minimum days for analysis")
+
+
+# Segment analysis models
+class SegmentData(BaseModel):
+    segment_name: str = Field(..., description="Segment dimension name")
+    segment_value: str = Field(..., description="Segment value")
+    control_visitors: int = Field(..., ge=0, description="Control visitors in segment")
+    control_conversions: int = Field(..., ge=0, description="Control conversions in segment")
+    variant_visitors: int = Field(..., ge=0, description="Variant visitors in segment")
+    variant_conversions: int = Field(..., ge=0, description="Variant conversions in segment")
+
+
+class SegmentAnalyzeRequest(BaseModel):
+    segments: List[SegmentData] = Field(..., min_length=1, description="Segment data")
+    confidence: int = Field(95, ge=80, le=99, description="Confidence level")
+    correction_method: Literal["bonferroni", "holm", "none"] = Field("bonferroni", description="Multiple comparison correction")
+    min_sample_per_segment: int = Field(100, gt=0, description="Minimum sample per segment")
+
+
+# Business impact models
+class ImpactProjectionRequest(BaseModel):
+    control_visitors: int = Field(..., gt=0, description="Control visitors in test")
+    control_conversions: int = Field(..., ge=0, description="Control conversions in test")
+    variant_visitors: int = Field(..., gt=0, description="Variant visitors in test")
+    variant_conversions: int = Field(..., ge=0, description="Variant conversions in test")
+    confidence: int = Field(95, ge=80, le=99, description="Confidence level")
+    average_order_value: float = Field(..., gt=0, description="Average revenue per conversion")
+    annual_traffic: int = Field(..., gt=0, description="Expected annual visitors")
+    profit_margin: float = Field(0.3, ge=0, le=1, description="Profit margin as decimal")
 
 
 @app.get("/api/health")
@@ -811,6 +899,297 @@ def timing_rate_analyze_summary(request: TimingRateSummaryRequest):
         )
         return PlainTextResponse(timing.summarize_rates(result, test_name=request.test_name, unit=request.unit))
     except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# Bayesian A/B Testing endpoints
+@app.post("/api/bayesian/analyze")
+def bayesian_analyze(request: BayesianAnalyzeRequest):
+    try:
+        result = bayesian.analyze(
+            control_visitors=request.control_visitors,
+            control_conversions=request.control_conversions,
+            variant_visitors=request.variant_visitors,
+            variant_conversions=request.variant_conversions,
+            prior_alpha=request.prior_alpha,
+            prior_beta=request.prior_beta,
+            confidence_threshold=request.confidence_threshold,
+        )
+        return {
+            "control_rate": float(result.control_rate),
+            "variant_rate": float(result.variant_rate),
+            "probability_variant_better": float(result.probability_variant_better),
+            "probability_control_better": float(result.probability_control_better),
+            "expected_loss_choosing_variant": float(result.expected_loss_choosing_variant),
+            "expected_loss_choosing_control": float(result.expected_loss_choosing_control),
+            "control_credible_interval": [float(result.control_credible_interval[0]), float(result.control_credible_interval[1])],
+            "variant_credible_interval": [float(result.variant_credible_interval[0]), float(result.variant_credible_interval[1])],
+            "lift_credible_interval": [float(result.lift_credible_interval[0]), float(result.lift_credible_interval[1])],
+            "lift_percent": float(result.lift_percent),
+            "has_winner": bool(result.has_winner),
+            "winner": str(result.winner),
+            "confidence_threshold": float(result.confidence_threshold),
+            "recommendation": str(result.recommendation),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# Sequential Testing endpoints
+@app.post("/api/sequential/analyze")
+def sequential_analyze(request: SequentialAnalyzeRequest):
+    try:
+        result = sequential.analyze(
+            control_visitors=request.control_visitors,
+            control_conversions=request.control_conversions,
+            variant_visitors=request.variant_visitors,
+            variant_conversions=request.variant_conversions,
+            expected_visitors_per_variant=request.expected_visitors_per_variant,
+            alpha=request.alpha,
+            method=request.method,
+        )
+        return {
+            "control_rate": float(result.control_rate),
+            "variant_rate": float(result.variant_rate),
+            "can_stop": bool(result.can_stop),
+            "decision": str(result.decision),
+            "lift_percent": float(result.lift_percent),
+            "z_statistic": float(result.z_statistic),
+            "p_value": float(result.p_value),
+            "upper_boundary": float(result.upper_boundary),
+            "lower_boundary": float(result.lower_boundary),
+            "current_statistic": float(result.current_statistic),
+            "confidence_variant_better": float(result.confidence_variant_better),
+            "confidence_control_better": float(result.confidence_control_better),
+            "adjusted_alpha": float(result.adjusted_alpha),
+            "information_fraction": float(result.information_fraction),
+            "estimated_remaining_visitors": result.estimated_remaining_visitors,
+            "recommendation": str(result.recommendation),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# Diagnostics endpoints
+@app.post("/api/diagnostics/srm")
+def check_srm(request: SRMCheckRequest):
+    try:
+        result = srm.check_sample_ratio(
+            control_visitors=request.control_visitors,
+            variant_visitors=request.variant_visitors,
+            expected_ratio=request.expected_ratio,
+        )
+        return {
+            "observed_ratio": float(result.observed_ratio),
+            "is_valid": bool(result.is_valid),
+            "p_value": float(result.p_value),
+            "chi2_statistic": float(result.chi2_statistic),
+            "severity": str(result.severity),
+            "deviation_percent": float(result.deviation_percent),
+            "warning": str(result.warning),
+            "recommendation": str(result.recommendation),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/diagnostics/health")
+def check_test_health(request: HealthCheckRequest):
+    try:
+        result = health.check_health(
+            control_visitors=request.control_visitors,
+            control_conversions=request.control_conversions,
+            variant_visitors=request.variant_visitors,
+            variant_conversions=request.variant_conversions,
+            expected_visitors_per_variant=request.expected_visitors_per_variant,
+            test_start_date=request.test_start_date,
+            expected_ratio=request.expected_ratio,
+            minimum_sample_per_variant=request.minimum_sample_per_variant,
+            minimum_days=request.minimum_days,
+            num_peeks=request.num_peeks,
+        )
+        return {
+            "overall_status": str(result.overall_status),
+            "score": int(result.score),
+            "checks": [
+                {
+                    "name": check.name,
+                    "status": check.status,
+                    "message": check.message,
+                    "details": check.details,
+                }
+                for check in result.checks
+            ],
+            "total_visitors": result.total_visitors,
+            "test_duration_days": result.test_duration_days,
+            "can_trust_results": bool(result.can_trust_results),
+            "primary_issues": result.primary_issues,
+            "recommendation": str(result.recommendation),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/diagnostics/novelty")
+def check_novelty_effect(request: NoveltyCheckRequest):
+    try:
+        daily_data = [
+            {
+                "day": d.day,
+                "control_visitors": d.control_visitors,
+                "control_conversions": d.control_conversions,
+                "variant_visitors": d.variant_visitors,
+                "variant_conversions": d.variant_conversions,
+            }
+            for d in request.daily_results
+        ]
+        result = novelty.detect_novelty_effect(
+            daily_results=daily_data,
+            min_days=request.min_days,
+        )
+        return {
+            "effect_detected": bool(result.effect_detected),
+            "effect_type": str(result.effect_type),
+            "initial_lift": float(result.initial_lift),
+            "current_lift": float(result.current_lift),
+            "trend_slope": float(result.trend_slope),
+            "trend_p_value": float(result.trend_p_value),
+            "projected_steady_state_lift": result.projected_steady_state_lift,
+            "days_to_steady_state": result.days_to_steady_state,
+            "confidence": float(result.confidence),
+            "daily_lifts": result.daily_lifts,
+            "smoothed_lifts": result.smoothed_lifts,
+            "warning": str(result.warning),
+            "recommendation": str(result.recommendation),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# Segment Analysis endpoints
+@app.post("/api/segments/analyze")
+def analyze_segments(request: SegmentAnalyzeRequest):
+    try:
+        segments_data = [
+            {
+                "segment_name": s.segment_name,
+                "segment_value": s.segment_value,
+                "control_visitors": s.control_visitors,
+                "control_conversions": s.control_conversions,
+                "variant_visitors": s.variant_visitors,
+                "variant_conversions": s.variant_conversions,
+            }
+            for s in request.segments
+        ]
+        result = segment_analysis.analyze_segments(
+            segments_data=segments_data,
+            confidence=request.confidence,
+            correction_method=request.correction_method,
+            min_sample_per_segment=request.min_sample_per_segment,
+        )
+        return {
+            "overall_lift": float(result.overall_lift),
+            "overall_is_significant": bool(result.overall_is_significant),
+            "segments": [
+                {
+                    "segment_name": seg.segment_name,
+                    "segment_value": seg.segment_value,
+                    "control_visitors": seg.control_visitors,
+                    "control_conversions": seg.control_conversions,
+                    "variant_visitors": seg.variant_visitors,
+                    "variant_conversions": seg.variant_conversions,
+                    "control_rate": float(seg.control_rate),
+                    "variant_rate": float(seg.variant_rate),
+                    "lift_percent": float(seg.lift_percent),
+                    "lift_ci_lower": float(seg.lift_ci_lower),
+                    "lift_ci_upper": float(seg.lift_ci_upper),
+                    "p_value": float(seg.p_value),
+                    "is_significant": bool(seg.is_significant),
+                    "winner": str(seg.winner),
+                    "sample_size_adequate": bool(seg.sample_size_adequate),
+                }
+                for seg in result.segments
+            ],
+            "n_segments": result.n_segments,
+            "best_segment": result.best_segment,
+            "worst_segment": result.worst_segment,
+            "heterogeneity_detected": bool(result.heterogeneity_detected),
+            "simpsons_paradox_risk": bool(result.simpsons_paradox_risk),
+            "correction_method": str(result.correction_method),
+            "adjusted_alpha": float(result.adjusted_alpha),
+            "recommendation": str(result.recommendation),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# Business Impact endpoints
+@app.post("/api/business/impact")
+def project_business_impact(request: ImpactProjectionRequest):
+    try:
+        # Calculate rates and lift from raw data
+        control_rate = request.control_conversions / request.control_visitors if request.control_visitors > 0 else 0
+        variant_rate = request.variant_conversions / request.variant_visitors if request.variant_visitors > 0 else 0
+        lift_percent = ((variant_rate - control_rate) / control_rate * 100) if control_rate > 0 else 0
+
+        # Calculate confidence interval for lift
+        import math
+        from scipy.stats import norm
+
+        alpha = 1 - request.confidence / 100
+        z = norm.ppf(1 - alpha / 2)
+
+        se_c = math.sqrt(control_rate * (1 - control_rate) / request.control_visitors) if request.control_visitors > 0 and 0 < control_rate < 1 else 0
+        se_v = math.sqrt(variant_rate * (1 - variant_rate) / request.variant_visitors) if request.variant_visitors > 0 and 0 < variant_rate < 1 else 0
+        se_diff = math.sqrt(se_c**2 + se_v**2)
+
+        diff = variant_rate - control_rate
+        diff_lower = diff - z * se_diff
+        diff_upper = diff + z * se_diff
+
+        lift_ci_lower = (diff_lower / control_rate * 100) if control_rate > 0 else 0
+        lift_ci_upper = (diff_upper / control_rate * 100) if control_rate > 0 else 0
+
+        # Calculate monthly visitors from annual
+        monthly_visitors = request.annual_traffic // 12
+
+        result = impact.project_impact(
+            control_rate=control_rate,
+            variant_rate=variant_rate,
+            lift_percent=lift_percent,
+            lift_ci_lower=lift_ci_lower,
+            lift_ci_upper=lift_ci_upper,
+            monthly_visitors=monthly_visitors,
+            revenue_per_conversion=request.average_order_value,
+            confidence=request.confidence,
+        )
+
+        # Calculate additional metrics
+        additional_conversions = int(result.annual_additional_conversions)
+        additional_revenue = float(result.annual_revenue_lift)
+        additional_profit = float(additional_revenue * request.profit_margin)
+
+        # Check significance
+        is_significant = bool(lift_ci_lower > 0 or lift_ci_upper < 0)
+
+        return {
+            "is_significant": is_significant,
+            "lift_percent": float(lift_percent),
+            "additional_conversions": additional_conversions,
+            "additional_revenue": additional_revenue,
+            "additional_profit": additional_profit,
+            "roi_percent": float(additional_profit / max(additional_revenue, 1) * 100) if additional_revenue != 0 else 0.0,
+            "confidence": request.confidence,
+            "confidence_interval": {
+                "revenue_lower": float(result.revenue_lift_range[0]),
+                "revenue_upper": float(result.revenue_lift_range[1]),
+            },
+            "probability_positive": float(result.probability_positive_impact),
+            "recommendation": str(result.recommendation),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 

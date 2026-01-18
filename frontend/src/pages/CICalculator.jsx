@@ -2,7 +2,7 @@ import { useState } from 'react'
 import TestTypeSelector from '../components/TestTypeSelector'
 import FormField from '../components/FormField'
 
-function ConfidenceIntervalCalculator() {
+function CICalculator() {
   const [testType, setTestType] = useState('conversion')
   const [formData, setFormData] = useState({
     visitors: 1000,
@@ -71,20 +71,20 @@ function ConfidenceIntervalCalculator() {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">Confidence Interval</h1>
+        <h1 className="page-title">Metric Range Calculator</h1>
         <p className="page-description">
-          Calculate the range where your true metric likely falls based on your sample data.
+          Find out the likely range for your true metric value based on the data you've collected.
         </p>
       </div>
 
       <div className="info-box">
         <span className="info-box-icon">📏</span>
         <div className="info-box-content">
-          <div className="info-box-title">What is a confidence interval?</div>
+          <div className="info-box-title">Why calculate a range?</div>
           <div className="info-box-text">
-            A confidence interval gives you a range of values that likely contains the true population value.
-            For example, if your conversion rate is 5% with a 95% CI of [4.5%, 5.5%], you can be 95% confident 
-            the true rate is somewhere in that range.
+            Your observed metric (like a 5% conversion rate) is based on a sample of users.
+            The true rate might be slightly higher or lower. This calculator tells you the likely range -
+            for example, "we're 95% confident the real rate is between 4.5% and 5.5%."
           </div>
         </div>
       </div>
@@ -177,9 +177,9 @@ function ConfidenceIntervalCalculator() {
               </>
             )}
 
-            <FormField 
-              label="Confidence Level" 
-              hint="Higher confidence = wider interval but more certainty"
+            <FormField
+              label="How confident do you want to be?"
+              hint="Higher confidence = wider range but more reliable"
             >
               <select
                 name="confidence"
@@ -187,9 +187,9 @@ function ConfidenceIntervalCalculator() {
                 value={formData.confidence}
                 onChange={handleChange}
               >
-                <option value={90}>90% - Narrower range, less certainty</option>
-                <option value={95}>95% - Standard choice, good balance</option>
-                <option value={99}>99% - Wider range, highest certainty</option>
+                <option value={90}>90% - Narrower range, good for quick estimates</option>
+                <option value={95}>95% - Recommended - good balance</option>
+                <option value={99}>99% - Widest range, highest reliability</option>
               </select>
             </FormField>
           </div>
@@ -217,7 +217,7 @@ function ConfidenceIntervalCalculator() {
         <div className="results-card">
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {result.confidence}% Confidence Interval
+              Your Likely Range ({result.confidence}% confident)
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
               <span style={{ fontSize: '28px', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
@@ -254,43 +254,43 @@ function ConfidenceIntervalCalculator() {
 
           <div className="stats-explanation">
             <div className="stats-card">
-              <div className="stats-card-label">Observed Value</div>
+              <div className="stats-card-label">Your Measured Value</div>
               <div className="stats-card-value">
-                {testType === 'conversion' 
+                {testType === 'conversion'
                   ? `${(result.rate * 100).toFixed(2)}%`
                   : `$${result.mean.toFixed(2)}`
                 }
               </div>
               <div className="stats-card-explanation">
-                The value you observed in your sample. This is your best estimate of the true value.
+                What you observed in your data. This is your best estimate, but may not be exact.
               </div>
             </div>
             <div className="stats-card">
-              <div className="stats-card-label">Margin of Error</div>
+              <div className="stats-card-label">Possible Variation</div>
               <div className="stats-card-value">
-                ±{testType === 'conversion' 
+                ±{testType === 'conversion'
                   ? `${(result.margin_of_error * 100).toFixed(2)}%`
                   : `$${result.margin_of_error.toFixed(2)}`
                 }
               </div>
               <div className="stats-card-explanation">
-                The observed value could be off by this much. Larger samples reduce the margin of error.
+                How much the real value could differ from what you measured. More data = smaller variation.
               </div>
             </div>
           </div>
 
           <div className="callout callout-info" style={{ marginTop: '20px' }}>
             <div className="callout-text">
-              <strong>Interpretation:</strong> Based on {formData.visitors.toLocaleString()} {testType === 'conversion' ? 'visitors' : 'observations'}, 
-              we're {result.confidence}% confident the true {testType === 'conversion' ? 'conversion rate' : 'average'} is between{' '}
+              <strong>What this means:</strong> Based on {formData.visitors.toLocaleString()} {testType === 'conversion' ? 'visitors' : 'observations'},
+              we're {result.confidence}% confident the real {testType === 'conversion' ? 'conversion rate' : 'average'} is between{' '}
               <strong>
-                {testType === 'conversion' 
+                {testType === 'conversion'
                   ? `${(result.lower * 100).toFixed(2)}%`
                   : `$${result.lower.toFixed(2)}`
                 }
               </strong> and{' '}
               <strong>
-                {testType === 'conversion' 
+                {testType === 'conversion'
                   ? `${(result.upper * 100).toFixed(2)}%`
                   : `$${result.upper.toFixed(2)}`
                 }
@@ -300,12 +300,12 @@ function ConfidenceIntervalCalculator() {
 
           <div style={{ marginTop: '20px', padding: '14px 16px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)' }}>
             <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>
-              💡 How to narrow your interval
+              Want a narrower range?
             </div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-              • <strong>Increase sample size</strong> — The most effective way to get a narrower range<br/>
-              • <strong>Lower confidence level</strong> — Trading certainty for precision (90% vs 95%)<br/>
-              • For conversions: rates closer to 50% have wider intervals than extreme rates
+              • <strong>Collect more data</strong> — The best way to get more precise estimates<br/>
+              • <strong>Accept less certainty</strong> — Use 90% instead of 95% for a tighter range<br/>
+              • Note: Conversion rates near 50% naturally have wider ranges than rates near 0% or 100%
             </div>
           </div>
         </div>
@@ -314,4 +314,4 @@ function ConfidenceIntervalCalculator() {
   )
 }
 
-export default ConfidenceIntervalCalculator
+export default CICalculator

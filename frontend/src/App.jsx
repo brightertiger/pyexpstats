@@ -1,33 +1,120 @@
+import { useState, useRef, useEffect } from 'react'
 import { Routes, Route, NavLink } from 'react-router-dom'
 import SampleSizeCalculator from './pages/SampleSizeCalculator'
 import SignificanceCalculator from './pages/SignificanceCalculator'
 import DiffInDiffCalculator from './pages/DiffInDiffCalculator'
 import TimingCalculator from './pages/TimingCalculator'
+import CICalculator from './pages/CICalculator'
+import DiagnosticsPage from './pages/DiagnosticsPage'
+import SegmentAnalysisPage from './pages/SegmentAnalysisPage'
+import ImpactProjectionPage from './pages/ImpactProjectionPage'
 
 function App() {
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreRef = useRef(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (moreRef.current && !moreRef.current.contains(event.target)) {
+        setMoreOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   return (
     <div className="app-container">
       <header className="top-header">
         <div className="header-left">
-          <img src="/logo.png" alt="pyexptest" className="header-logo" />
+          <img src="/logo.png" alt="expstats" className="header-logo" />
         </div>
-        
+
         <nav className="header-nav">
           <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end>
-            Sample Size
+            Plan
           </NavLink>
           <NavLink to="/analyze" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            Results
+            Analyze
           </NavLink>
-          <NavLink to="/timing" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            Timing
+          <NavLink to="/diagnostics" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            Diagnose
           </NavLink>
-          <NavLink to="/diff-in-diff" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            Diff-in-Diff
-          </NavLink>
+
+          <div className="nav-dropdown" ref={moreRef}>
+            <button
+              className={`nav-item nav-dropdown-trigger ${moreOpen ? 'active' : ''}`}
+              onClick={() => setMoreOpen(!moreOpen)}
+            >
+              More
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" style={{ marginLeft: '4px' }}>
+                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+              </svg>
+            </button>
+            {moreOpen && (
+              <div className="nav-dropdown-menu">
+                <NavLink
+                  to="/segments"
+                  className="nav-dropdown-item"
+                  onClick={() => setMoreOpen(false)}
+                >
+                  <span className="nav-dropdown-icon">🎯</span>
+                  <div>
+                    <div className="nav-dropdown-label">Segments</div>
+                    <div className="nav-dropdown-desc">Results by user group</div>
+                  </div>
+                </NavLink>
+                <NavLink
+                  to="/impact"
+                  className="nav-dropdown-item"
+                  onClick={() => setMoreOpen(false)}
+                >
+                  <span className="nav-dropdown-icon">💰</span>
+                  <div>
+                    <div className="nav-dropdown-label">Revenue Impact</div>
+                    <div className="nav-dropdown-desc">Estimate business value</div>
+                  </div>
+                </NavLink>
+                <NavLink
+                  to="/diff-in-diff"
+                  className="nav-dropdown-item"
+                  onClick={() => setMoreOpen(false)}
+                >
+                  <span className="nav-dropdown-icon">📈</span>
+                  <div>
+                    <div className="nav-dropdown-label">Before/After</div>
+                    <div className="nav-dropdown-desc">Compare pre vs post periods</div>
+                  </div>
+                </NavLink>
+                <NavLink
+                  to="/timing"
+                  className="nav-dropdown-item"
+                  onClick={() => setMoreOpen(false)}
+                >
+                  <span className="nav-dropdown-icon">⏱️</span>
+                  <div>
+                    <div className="nav-dropdown-label">Time-Based</div>
+                    <div className="nav-dropdown-desc">Time-to-event tests</div>
+                  </div>
+                </NavLink>
+                <NavLink
+                  to="/confidence-interval"
+                  className="nav-dropdown-item"
+                  onClick={() => setMoreOpen(false)}
+                >
+                  <span className="nav-dropdown-icon">📏</span>
+                  <div>
+                    <div className="nav-dropdown-label">Metric Range</div>
+                    <div className="nav-dropdown-desc">Range for a single metric</div>
+                  </div>
+                </NavLink>
+              </div>
+            )}
+          </div>
         </nav>
 
-        <a 
+        <a
           href="https://github.com/pyexptest/pyexptest"
           target="_blank"
           rel="noopener noreferrer"
@@ -39,13 +126,17 @@ function App() {
           </svg>
         </a>
       </header>
-      
+
       <main className="main-content">
         <Routes>
           <Route path="/" element={<SampleSizeCalculator />} />
           <Route path="/analyze" element={<SignificanceCalculator />} />
+          <Route path="/diagnostics" element={<DiagnosticsPage />} />
           <Route path="/timing" element={<TimingCalculator />} />
           <Route path="/diff-in-diff" element={<DiffInDiffCalculator />} />
+          <Route path="/segments" element={<SegmentAnalysisPage />} />
+          <Route path="/impact" element={<ImpactProjectionPage />} />
+          <Route path="/confidence-interval" element={<CICalculator />} />
         </Routes>
       </main>
     </div>

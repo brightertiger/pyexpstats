@@ -59,6 +59,12 @@ Calculate sample sizes, analyze experiment results, and determine statistical si
 - [Conversion Effects](#-conversion-effects--whether-it-happens) — Binary outcomes (signup, purchase, click)
 - [Magnitude Effects](#-magnitude-effects--how-much-it-happens) — Continuous metrics (revenue, time)
 - [Timing Effects](#️-timing-effects--when-it-happens) — Survival analysis, event rates
+- [Sequential Testing](#-sequential-testing) — Early stopping with valid statistics
+- [Bayesian A/B Testing](#-bayesian-ab-testing) — Probability-based decisions
+- [Diagnostics](#-diagnostics) — SRM detection, test health, novelty effects
+- [Planning](#-planning) — MDE calculator, duration recommendations
+- [Business Impact](#-business-impact) — Revenue projections, guardrails
+- [Segment Analysis](#-segment-analysis) — Analyze effects by user segment
 - [Generate Reports](#-generate-stakeholder-reports)
 - [Web Interface](#-web-interface)
 - [API Reference](#api-reference)
@@ -345,6 +351,285 @@ print(f"Expected events: {plan.total_expected_events:,}")
 
 ---
 
+## 🔄 Sequential Testing
+
+Stop your A/B tests early with valid statistics using Sequential Probability Ratio Test (SPRT) with O'Brien-Fleming boundaries.
+
+### Check If You Can Stop Early
+
+```python
+from expstats.methods import sequential
+
+result = sequential.analyze(
+    control_visitors=2500,
+    control_conversions=125,
+    variant_visitors=2500,
+    variant_conversions=175,
+    expected_visitors_per_variant=5000,  # Your planned sample size
+)
+
+print(f"Can stop: {result.can_stop}")
+print(f"Decision: {result.decision}")  # 'variant_wins', 'control_wins', 'no_difference', 'keep_running'
+print(f"Progress: {result.information_fraction:.0%} through test")
+print(f"Confidence: {result.confidence_variant_better:.1f}%")
+```
+
+**Why Sequential Testing?**
+
+- **No peeking penalty** — Check results as often as you want without inflating false positives
+- **Stop early for clear winners** — Save time and traffic when effects are obvious
+- **Valid confidence intervals** — Always maintain proper statistical guarantees
+
+---
+
+## 🎲 Bayesian A/B Testing
+
+Get intuitive probability-based results instead of confusing p-values.
+
+### Bayesian Analysis
+
+```python
+from expstats.methods import bayesian
+
+result = bayesian.analyze(
+    control_visitors=1000,
+    control_conversions=50,
+    variant_visitors=1000,
+    variant_conversions=65,
+)
+
+print(f"Probability variant is better: {result.probability_variant_better:.1f}%")
+print(f"Expected loss if choosing variant: {result.expected_loss_choosing_variant:.4f}")
+print(f"Lift credible interval: {result.lift_credible_interval}")
+print(f"Winner: {result.winner}")
+```
+
+**Why Bayesian Testing?**
+
+- **Intuitive results** — "94% probability variant is better" vs "p < 0.05"
+- **No fixed sample size** — Can check results anytime
+- **Risk quantification** — Expected loss tells you the cost of being wrong
+- **Credible intervals** — Direct probability statements about the true effect
+
+---
+
+## 🔍 Diagnostics
+
+Validate your A/B test before trusting the results.
+
+### Sample Ratio Mismatch (SRM) Detection
+
+SRM indicates bugs in your experiment setup that can invalidate results:
+
+```python
+from expstats.diagnostics import check_sample_ratio
+
+result = check_sample_ratio(
+    control_visitors=10500,
+    variant_visitors=9500,
+    expected_ratio=0.5,  # Expected 50/50 split
+)
+
+print(f"Valid: {result.is_valid}")
+print(f"Severity: {result.severity}")  # 'ok', 'warning', 'critical'
+print(f"Deviation: {result.deviation_percent:.1f}%")
+```
+
+### Test Health Dashboard
+
+Comprehensive health check for your experiment:
+
+```python
+from expstats.diagnostics import check_health
+
+health = check_health(
+    control_visitors=5000,
+    control_conversions=250,
+    variant_visitors=5000,
+    variant_conversions=275,
+)
+
+print(f"Status: {health.overall_status}")  # 'healthy', 'warning', 'unhealthy'
+print(f"Score: {health.score}/100")
+print(f"Can trust results: {health.can_trust_results}")
+
+for check in health.checks:
+    print(f"  {check.name}: {check.status}")
+```
+
+### Novelty Effect Detection
+
+Detect if your experiment effect is fading over time:
+
+```python
+from expstats.diagnostics import detect_novelty_effect
+
+daily_results = [
+    {"day": 1, "control_visitors": 1000, "control_conversions": 50,
+     "variant_visitors": 1000, "variant_conversions": 70},
+    {"day": 2, "control_visitors": 1000, "control_conversions": 50,
+     "variant_visitors": 1000, "variant_conversions": 65},
+    # ... more days
+]
+
+result = detect_novelty_effect(daily_results)
+
+print(f"Effect type: {result.effect_type}")  # 'novelty', 'primacy', 'stable'
+print(f"Initial lift: {result.initial_lift:+.1f}%")
+print(f"Current lift: {result.current_lift:+.1f}%")
+if result.projected_steady_state_lift:
+    print(f"Projected steady state: {result.projected_steady_state_lift:+.1f}%")
+```
+
+---
+
+## 📐 Planning
+
+Plan your A/B tests before running them.
+
+### Minimum Detectable Effect (MDE) Calculator
+
+Understand what effects you can detect with your traffic:
+
+```python
+from expstats.planning import minimum_detectable_effect
+
+result = minimum_detectable_effect(
+    daily_traffic=5000,
+    test_duration_days=14,
+    baseline_rate=0.05,
+)
+
+print(f"MDE: {result.minimum_detectable_effect:.1f}% lift")
+print(f"Can detect variant rate: {result.detectable_variant_rate:.2%}")
+print(f"Is practically useful: {result.is_practically_useful}")
+```
+
+### Duration Recommendations
+
+Get recommendations for how long to run your test:
+
+```python
+from expstats.planning import recommend_duration
+
+result = recommend_duration(
+    baseline_rate=0.05,
+    minimum_detectable_effect=0.10,  # 10% lift
+    daily_traffic=5000,
+    business_type="ecommerce",
+)
+
+print(f"Recommended: {result.recommended_days} days")
+print(f"Minimum: {result.minimum_days} days")
+print(f"Ideal: {result.ideal_days} days")
+print(f"Sample needed: {result.required_sample_per_variant:,} per variant")
+```
+
+---
+
+## 💰 Business Impact
+
+Translate A/B test results into business value.
+
+### Revenue Impact Projections
+
+```python
+from expstats.business import project_impact
+
+projection = project_impact(
+    control_rate=0.05,
+    variant_rate=0.055,
+    lift_percent=10.0,
+    lift_ci_lower=2.0,
+    lift_ci_upper=18.0,
+    monthly_visitors=100000,
+    revenue_per_conversion=50.0,
+)
+
+print(f"Monthly revenue lift: ${projection.monthly_revenue_lift:,.0f}")
+print(f"Annual revenue lift: ${projection.annual_revenue_lift:,.0f}")
+print(f"Probability of positive impact: {projection.probability_positive_impact:.1%}")
+```
+
+### Guardrail Metrics
+
+Monitor metrics you want to protect during experiments:
+
+```python
+from expstats.business import check_guardrails
+
+report = check_guardrails([
+    {
+        "name": "Page Load Time",
+        "metric_type": "mean",
+        "direction": "increase_is_bad",
+        "threshold_percent": 10,
+        "control_data": [100, 110, 95, 105] * 100,
+        "variant_data": [105, 115, 100, 108] * 100,
+    },
+    {
+        "name": "Error Rate",
+        "metric_type": "proportion",
+        "direction": "increase_is_bad",
+        "threshold_percent": 20,
+        "control_data": {"count": 50, "total": 10000},
+        "variant_data": {"count": 55, "total": 10000},
+    },
+])
+
+print(f"Can ship: {report.can_ship}")
+print(f"Passed: {report.passed}")
+print(f"Warnings: {report.warnings}")
+print(f"Failures: {report.failures}")
+```
+
+---
+
+## 📊 Segment Analysis
+
+Analyze how your A/B test performs across different user segments.
+
+### Analyze by Segment
+
+```python
+from expstats.segments import analyze_segments
+
+report = analyze_segments([
+    {
+        "segment_name": "device",
+        "segment_value": "mobile",
+        "control_visitors": 5000,
+        "control_conversions": 250,
+        "variant_visitors": 5000,
+        "variant_conversions": 350,
+    },
+    {
+        "segment_name": "device",
+        "segment_value": "desktop",
+        "control_visitors": 3000,
+        "control_conversions": 180,
+        "variant_visitors": 3000,
+        "variant_conversions": 190,
+    },
+])
+
+print(f"Overall lift: {report.overall_lift:+.1f}%")
+print(f"Best segment: {report.best_segment}")
+print(f"Heterogeneity detected: {report.heterogeneity_detected}")
+print(f"Simpson's paradox risk: {report.simpsons_paradox_risk}")
+
+for segment in report.segments:
+    print(f"  {segment.segment_value}: {segment.lift_percent:+.1f}% (sig: {segment.is_significant})")
+```
+
+**Features:**
+
+- **Bonferroni/Holm correction** — Automatic correction for multiple comparisons
+- **Heterogeneity detection** — Find when effects vary significantly by segment
+- **Simpson's Paradox warnings** — Detect when overall results mislead
+
+---
+
 ## 📋 Generate Stakeholder Reports
 
 Every effect type includes `summarize()` to generate plain-language markdown reports for stakeholders:
@@ -456,6 +741,48 @@ The web interface includes:
 | `summarize(result, test_name)` | Generate markdown report |
 | `summarize_rates(result, test_name, unit)` | Rate analysis report |
 
+### methods.sequential module
+
+| Function | Purpose |
+|----------|---------|
+| `analyze(control_visitors, control_conversions, ..., expected_visitors_per_variant)` | Sequential test with early stopping |
+| `summarize(result)` | Generate markdown report |
+
+### methods.bayesian module
+
+| Function | Purpose |
+|----------|---------|
+| `analyze(control_visitors, control_conversions, ...)` | Bayesian A/B test analysis |
+| `summarize(result)` | Generate markdown report |
+
+### diagnostics module
+
+| Function | Purpose |
+|----------|---------|
+| `check_sample_ratio(control_visitors, variant_visitors, ...)` | SRM detection |
+| `check_health(control_visitors, control_conversions, ...)` | Comprehensive test health check |
+| `detect_novelty_effect(daily_results, ...)` | Detect fading/growing effects |
+
+### planning module
+
+| Function | Purpose |
+|----------|---------|
+| `minimum_detectable_effect(sample_size_per_variant, ...)` | Calculate MDE |
+| `recommend_duration(baseline_rate, minimum_detectable_effect, daily_traffic, ...)` | Duration recommendations |
+
+### business module
+
+| Function | Purpose |
+|----------|---------|
+| `project_impact(control_rate, variant_rate, lift_percent, ...)` | Revenue impact projection |
+| `check_guardrails(guardrails)` | Monitor guardrail metrics |
+
+### segments module
+
+| Function | Purpose |
+|----------|---------|
+| `analyze_segments(segments_data, ...)` | Segment-level analysis with correction |
+
 ---
 
 ## Module Structure
@@ -467,6 +794,21 @@ expstats/
       conversion.py    # Binary outcomes (signup, purchase, click)
       magnitude.py     # Continuous metrics (revenue, time, value)
       timing.py        # Time-to-event (survival, rates)
+  methods/
+    sequential.py      # Sequential testing with early stopping
+    bayesian.py        # Bayesian A/B testing
+  diagnostics/
+    srm.py             # Sample Ratio Mismatch detection
+    health.py          # Test health dashboard
+    novelty.py         # Novelty effect detection
+  planning/
+    mde.py             # Minimum Detectable Effect calculator
+    duration.py        # Test duration recommendations
+  business/
+    impact.py          # Revenue impact projections
+    guardrails.py      # Guardrail metrics monitoring
+  segments/
+    analysis.py        # Segment-level analysis
 ```
 
 ---
