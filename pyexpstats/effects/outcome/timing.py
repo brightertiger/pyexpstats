@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 from scipy import stats
 
-from expstats.utils.stats import (
+from pyexpstats.utils.stats import (
     sample_size_survival,
     hazard_ratio_from_events,
 )

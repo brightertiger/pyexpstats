@@ -6,14 +6,14 @@ from pydantic import BaseModel, Field
 from typing import Literal, Optional, List
 import os
 
-from expstats.effects.outcome import conversion, magnitude, timing
-from expstats.methods import bayesian, sequential
-from expstats.diagnostics import srm, health, novelty
-from expstats.segments import analysis as segment_analysis
-from expstats.business import impact
+from pyexpstats.effects.outcome import conversion, magnitude, timing
+from pyexpstats.methods import bayesian, sequential
+from pyexpstats.diagnostics import srm, health, novelty
+from pyexpstats.segments import analysis as segment_analysis
+from pyexpstats.business import impact
 
 app = FastAPI(
-    title="expstats API",
+    title="pyexpstats API",
     description="Simple A/B testing tools for marketers and analysts",
     version="0.1.0",
 )

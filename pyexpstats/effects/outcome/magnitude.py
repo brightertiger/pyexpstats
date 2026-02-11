@@ -3,8 +3,8 @@ from scipy.stats import norm, t, f as f_dist
 from typing import Literal, Optional, List, Dict, Any
 from dataclasses import dataclass
 
-from expstats.effects.outcome.base import FullOutcomeEffect
-from expstats.utils.stats import (
+from pyexpstats.effects.outcome.base import FullOutcomeEffect
+from pyexpstats.utils.stats import (
     sample_size_two_means,
     welch_t_test,
     mean_ci as calc_mean_ci,

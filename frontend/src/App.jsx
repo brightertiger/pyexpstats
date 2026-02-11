@@ -28,7 +28,7 @@ function App() {
     <div className="app-container">
       <header className="top-header">
         <div className="header-left">
-          <img src="/logo.png" alt="expstats" className="header-logo" />
+          <img src="/logo.png" alt="pyexpstats" className="header-logo" />
         </div>
 
         <nav className="header-nav">

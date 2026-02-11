@@ -15,7 +15,7 @@ from typing import List, Optional, Literal
 from datetime import datetime, timedelta
 from scipy.stats import norm
 
-from expstats.diagnostics.srm import check_sample_ratio
+from pyexpstats.diagnostics.srm import check_sample_ratio
 
 
 @dataclass

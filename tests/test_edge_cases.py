@@ -1,5 +1,5 @@
 """
-Comprehensive edge case tests for expstats library.
+Comprehensive edge case tests for pyexpstats library.
 
 This module tests boundary conditions, numerical edge cases, and
 statistical corner cases to ensure robust behavior.
@@ -8,9 +8,9 @@ statistical corner cases to ensure robust behavior.
 import pytest
 import math
 import numpy as np
-from expstats import conversion, magnitude, timing
-from expstats.utils import stats, validation
-from expstats.utils.math import (
+from pyexpstats import conversion, magnitude, timing
+from pyexpstats.utils import stats, validation
+from pyexpstats.utils.math import (
     pooled_proportion,
     pooled_variance,
     effect_size_cohens_h,

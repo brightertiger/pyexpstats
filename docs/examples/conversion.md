@@ -1,6 +1,6 @@
 # Conversion Rate Test Examples
 
-Real-world examples of using expstats for conversion rate A/B tests.
+Real-world examples of using pyexpstats for conversion rate A/B tests.
 
 ## Example 1: Signup Button Test
 
@@ -10,7 +10,7 @@ You're testing a new signup button color. After 2 weeks:
 - **Variant (green):** 15,000 visitors, 525 signups
 
 ```python
-from expstats import conversion
+from pyexpstats import conversion
 
 result = conversion.analyze(
     control_visitors=15000,

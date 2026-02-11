@@ -1,5 +1,5 @@
 """
-Input validation utilities for expstats.
+Input validation utilities for pyexpstats.
 
 This module provides validation functions to ensure inputs are valid
 before performing statistical calculations.

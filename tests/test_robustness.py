@@ -1,5 +1,5 @@
 """
-Robustness tests for expstats library.
+Robustness tests for pyexpstats library.
 
 These tests focus on:
 1. Type safety and input validation
@@ -11,11 +11,11 @@ These tests focus on:
 import pytest
 import math
 import numpy as np
-from expstats import conversion, magnitude, timing
-from expstats.utils import stats, validation
-from expstats.effects.outcome.conversion import ConversionEffect
-from expstats.effects.outcome.magnitude import MagnitudeEffect
-from expstats.effects.outcome.timing import TimingEffect
+from pyexpstats import conversion, magnitude, timing
+from pyexpstats.utils import stats, validation
+from pyexpstats.effects.outcome.conversion import ConversionEffect
+from pyexpstats.effects.outcome.magnitude import MagnitudeEffect
+from pyexpstats.effects.outcome.timing import TimingEffect
 
 
 # ==============================================================================
@@ -584,7 +584,7 @@ class TestDataClassProperties:
 
     def test_conversion_variant_rate_property(self):
         """ConversionVariant.rate property."""
-        from expstats.effects.outcome.conversion import ConversionVariant
+        from pyexpstats.effects.outcome.conversion import ConversionVariant
 
         variant = ConversionVariant(name="test", visitors=1000, conversions=100)
         assert variant.rate == 0.1

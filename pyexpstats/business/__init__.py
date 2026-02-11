@@ -6,11 +6,11 @@ Tools to translate A/B test results into business value:
 - Guardrail metrics monitoring
 """
 
-from expstats.business.impact import (
+from pyexpstats.business.impact import (
     project_impact,
     ImpactProjection,
 )
-from expstats.business.guardrails import (
+from pyexpstats.business.guardrails import (
     check_guardrails,
     GuardrailResult,
     GuardrailCheck,

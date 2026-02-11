@@ -5,7 +5,7 @@ Tests segment analysis and Simpson's Paradox detection.
 """
 
 import pytest
-from expstats.segments.analysis import (
+from pyexpstats.segments.analysis import (
     analyze_segments,
     SegmentAnalysisReport,
     SegmentResult,

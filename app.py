@@ -1,1 +1,1 @@
-from expstats.api import app
+from pyexpstats.api import app

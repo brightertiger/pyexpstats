@@ -3,13 +3,13 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "expstats"
-version = "0.1.0"
-description = "Statistical tools for A/B testing - sample size calculation, power analysis, and significance testing"
+name = "pyexpstats"
+version = "0.2.0"
+description = "Statistical tools for A/B testing - sample size calculation, power analysis, significance testing, Bayesian analysis, sequential testing, and business impact projections"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "expstats contributors"}
+    {name = "pyexpstats contributors"}
 ]
 requires-python = ">=3.9"
 classifiers = [
@@ -52,19 +52,29 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/expstats/expstats"
-Documentation = "https://github.com/expstats/expstats#readme"
-Repository = "https://github.com/expstats/expstats"
-Issues = "https://github.com/expstats/expstats/issues"
+Homepage = "https://github.com/pyexpstats/pyexpstats"
+Documentation = "https://github.com/pyexpstats/pyexpstats#readme"
+Repository = "https://github.com/pyexpstats/pyexpstats"
+Issues = "https://github.com/pyexpstats/pyexpstats/issues"
 
 [project.scripts]
-expstats-server = "expstats.api:main"
+pyexpstats-server = "pyexpstats.api:main"
 
 [tool.setuptools]
-packages = ["expstats", "expstats.utils", "expstats.effects", "expstats.effects.outcome"]
+packages = [
+    "pyexpstats",
+    "pyexpstats.utils",
+    "pyexpstats.effects",
+    "pyexpstats.effects.outcome",
+    "pyexpstats.methods",
+    "pyexpstats.diagnostics",
+    "pyexpstats.segments",
+    "pyexpstats.business",
+    "pyexpstats.planning",
+]
 
 [tool.setuptools.package-data]
-expstats = ["py.typed"]
+pyexpstats = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

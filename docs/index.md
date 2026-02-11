@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="expstats" width="400">
+  <img src="assets/logo.png" alt="pyexpstats" width="400">
 </p>
 
 <p align="center">
@@ -10,7 +10,7 @@
 
 ## Outcome Effects
 
-expstats models experimental impact across three fundamental **outcome dimensions**:
+pyexpstats models experimental impact across three fundamental **outcome dimensions**:
 
 | Effect Type | Question Answered | Examples |
 |-------------|-------------------|----------|
@@ -23,13 +23,13 @@ This framework ensures experiments are interpreted in terms of **behavioral chan
 ## Installation
 
 ```bash
-pip install expstats
+pip install pyexpstats
 ```
 
 ## Quick Start
 
 ```python
-from expstats import conversion, magnitude, timing
+from pyexpstats import conversion, magnitude, timing
 
 # Conversion: Did the treatment change whether users purchase?
 result = conversion.analyze(
@@ -64,7 +64,7 @@ print(f"Hazard ratio: {result.hazard_ratio:.2f}")
 Or use the fully-qualified path:
 
 ```python
-from expstats.effects.outcome import conversion, magnitude, timing
+from pyexpstats.effects.outcome import conversion, magnitude, timing
 ```
 
 ---
@@ -76,7 +76,7 @@ Use when your outcome is binary: did the user convert or not?
 ### Analyze a Test
 
 ```python
-from expstats import conversion
+from pyexpstats import conversion
 
 result = conversion.analyze(
     control_visitors=10000,
@@ -144,7 +144,7 @@ Use when your outcome is a continuous value: revenue, time, count.
 ### Analyze a Test
 
 ```python
-from expstats import magnitude
+from pyexpstats import magnitude
 
 result = magnitude.analyze(
     control_visitors=5000,
@@ -210,7 +210,7 @@ Use when you care about time-to-event: time to purchase, time to churn, event ra
 ### Survival Analysis
 
 ```python
-from expstats import timing
+from pyexpstats import timing
 
 result = timing.analyze(
     control_times=[5, 8, 12, 15, 18, 22, 25, 30],
@@ -268,10 +268,10 @@ print(report)
 
 ## 🌐 Web Interface
 
-expstats includes a web UI for interactive analysis:
+pyexpstats includes a web UI for interactive analysis:
 
 ```bash
-expstats-server
+pyexpstats-server
 # Open http://localhost:8000
 ```
 
@@ -289,7 +289,7 @@ Features include:
 
 Traditional A/B testing tools are **test-centric**: "Which statistical test should I use?"
 
-expstats is **effect-centric**: "What changed about user behavior?"
+pyexpstats is **effect-centric**: "What changed about user behavior?"
 
 This means:
 

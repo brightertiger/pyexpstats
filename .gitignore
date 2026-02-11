@@ -219,5 +219,5 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 
-# expstats
+# pyexpstats
 .creds/

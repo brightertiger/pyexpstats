@@ -1,0 +1,337 @@
+\documentclass[10pt,a4paper]{article}
+
+% JOSS-style packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{natbib}
+\usepackage{fancyhdr}
+\usepackage{float}
+
+\geometry{margin=1in}
+
+% Code listing style
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.95}
+
+\lstdefinestyle{pythonstyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    frame=single
+}
+
+\lstset{style=pythonstyle}
+
+\title{\textbf{pyexpstats}: A Comprehensive Python Library for A/B Testing and Experimentation Statistics}
+
+\author{
+    pyexpstats contributors\\
+    \texttt{https://github.com/pyexpstats/pyexpstats}
+}
+
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\textbf{pyexpstats} is an open-source Python library that provides a complete statistical toolkit for A/B testing and online experimentation. The library offers sample size calculation, power analysis, significance testing, Bayesian inference, sequential testing with early stopping, and business impact projections. Designed with both analysts and non-technical users in mind, pyexpstats includes a web-based user interface that makes statistical analysis accessible to marketing and product teams. The library addresses the growing need for rigorous experimentation practices in industry while maintaining ease of use.
+\end{abstract}
+
+\section*{Summary}
+
+Online controlled experiments (A/B tests) have become the gold standard for data-driven decision making in technology companies \citep{kohavi2020trustworthy}. However, proper statistical analysis of experiments requires expertise that many practitioners lack. \textbf{pyexpstats} bridges this gap by providing:
+
+\begin{itemize}
+    \item A Python API for analysts to integrate into data pipelines
+    \item A web-based UI for non-technical stakeholders
+    \item Business-friendly terminology and interpretations
+    \item Multiple testing methodologies (frequentist, Bayesian, sequential)
+    \item Diagnostic tools for detecting common experimental issues
+\end{itemize}
+
+\section*{Statement of Need}
+
+Despite the proliferation of A/B testing tools, most solutions fall into two categories: expensive enterprise platforms or fragmented open-source libraries that require significant statistical knowledge. pyexpstats addresses several critical gaps:
+
+\begin{enumerate}
+    \item \textbf{Accessibility}: Complex statistical concepts are translated into business-friendly language (e.g., ``Chance to Win'' instead of ``Bayesian posterior probability'')
+
+    \item \textbf{Comprehensiveness}: A single library covers the entire experimentation lifecycle from planning through analysis
+
+    \item \textbf{Diagnostic Tools}: Built-in detection for common issues like Sample Ratio Mismatch (SRM), novelty effects, and Simpson's paradox
+
+    \item \textbf{Multiple Methodologies}: Support for frequentist, Bayesian, and sequential testing approaches
+\end{enumerate}
+
+\section*{Key Features}
+
+\subsection*{1. Sample Size Planning}
+
+Proper experiment planning is crucial for reliable results. pyexpstats provides sample size calculators for:
+
+\begin{itemize}
+    \item Conversion rate tests (binomial outcomes)
+    \item Revenue/magnitude tests (continuous outcomes)
+    \item Time-to-event analyses (survival outcomes)
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption=Sample size calculation example]
+from pyexpstats import conversion
+
+plan = conversion.sample_size(
+    current_rate=0.05,      # 5% baseline conversion
+    lift_percent=10,        # Detect 10% relative lift
+    confidence=95,          # 95% confidence level
+    power=80                # 80% statistical power
+)
+
+print(f"Visitors per variant: {plan.visitors_per_variant:,}")
+# Output: Visitors per variant: 31,234
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/sample-size-calculator.png}
+    \caption{Sample Size Calculator interface showing planning for a conversion rate experiment}
+    \label{fig:sample-size}
+\end{figure}
+
+\subsection*{2. Statistical Analysis Methods}
+
+pyexpstats supports three complementary analysis approaches:
+
+\subsubsection*{Classic (Frequentist) Analysis}
+Traditional hypothesis testing with p-values and confidence intervals using two-sample z-tests for proportions and t-tests for continuous outcomes.
+
+\subsubsection*{Bayesian Analysis}
+Computes the probability that one variant is better than another, providing more intuitive interpretations for decision-makers \citep{stucchio2015bayesian}.
+
+\begin{lstlisting}[language=Python, caption=Bayesian analysis example]
+from pyexpstats.methods import bayesian
+
+result = bayesian.analyze(
+    control_visitors=10000,
+    control_conversions=500,
+    variant_visitors=10000,
+    variant_conversions=550
+)
+
+print(f"Probability variant wins: {result.probability_variant_better:.1%}")
+# Output: Probability variant wins: 94.2%
+\end{lstlisting}
+
+\subsubsection*{Sequential Testing}
+Enables valid early stopping decisions using group sequential methods with O'Brien-Fleming or Pocock spending functions \citep{jennison1999group}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/analyze-results.png}
+    \caption{Results Analysis interface showing three analysis methods: Classic, Chance to Win (Bayesian), and Early Stopping (Sequential)}
+    \label{fig:analysis}
+\end{figure}
+
+\subsection*{3. Diagnostic Tools}
+
+Experimental validity depends on detecting issues that can bias results:
+
+\subsubsection*{Sample Ratio Mismatch (SRM)}
+Detects when traffic allocation differs from the intended split, indicating potential randomization bugs.
+
+\subsubsection*{Novelty Effect Detection}
+Identifies whether treatment effects change over time, distinguishing lasting improvements from temporary novelty effects.
+
+\subsubsection*{Experiment Health Score}
+Provides an overall assessment combining multiple diagnostic checks.
+
+\begin{lstlisting}[language=Python, caption=Diagnostic checks example]
+from pyexpstats.diagnostics import srm, novelty
+
+# Check for Sample Ratio Mismatch
+srm_result = srm.check(
+    control_visitors=10000,
+    variant_visitors=9500,
+    expected_ratio=0.5
+)
+print(f"SRM detected: {srm_result.has_srm}")
+
+# Check for novelty effects
+novelty_result = novelty.detect(
+    daily_lifts=[0.15, 0.12, 0.08, 0.05, 0.04, 0.03, 0.03],
+    daily_visitors=[1000, 1000, 1000, 1000, 1000, 1000, 1000]
+)
+print(f"Effect is stabilizing: {novelty_result.effect_stabilizing}")
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/diagnostics.png}
+    \caption{Diagnostics interface showing experiment health checks, traffic balance (SRM), and effect stability over time}
+    \label{fig:diagnostics}
+\end{figure}
+
+\subsection*{4. Segment Analysis}
+
+Analyzing results across user segments requires proper multiple comparison corrections. pyexpstats supports:
+
+\begin{itemize}
+    \item Bonferroni correction (conservative)
+    \item Holm-Bonferroni correction (balanced)
+    \item Simpson's Paradox detection
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/segments.png}
+    \caption{Segment Analysis interface showing results breakdown by user groups with multiple comparison corrections}
+    \label{fig:segments}
+\end{figure}
+
+\subsection*{5. Business Impact Projections}
+
+Translating statistical results into business value:
+
+\begin{lstlisting}[language=Python, caption=Business impact projection]
+from pyexpstats.business import impact
+
+projection = impact.project(
+    baseline_value=1000000,      # $1M monthly revenue
+    lift_percent=5.0,            # 5% observed lift
+    confidence_interval=(3.0, 7.0),
+    time_horizon_months=12
+)
+
+print(f"Expected annual impact: ${projection.expected_impact:,.0f}")
+print(f"Range: ${projection.lower_bound:,.0f} - ${projection.upper_bound:,.0f}")
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/impact.png}
+    \caption{Revenue Impact interface showing projected business value from experiment results}
+    \label{fig:impact}
+\end{figure}
+
+\section*{Architecture}
+
+pyexpstats is designed with a modular architecture:
+
+\begin{itemize}
+    \item \textbf{Core Statistical Engine}: Pure Python/NumPy/SciPy implementations
+    \item \textbf{API Layer}: FastAPI-based REST endpoints for web integration
+    \item \textbf{Web Interface}: React-based UI for non-technical users
+    \item \textbf{Pydantic Models}: Type-safe data validation throughout
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Module Organization}
+\begin{tabular}{ll}
+\toprule
+\textbf{Module} & \textbf{Purpose} \\
+\midrule
+\texttt{pyexpstats.effects.outcome.conversion} & Binary outcome analysis \\
+\texttt{pyexpstats.effects.outcome.magnitude} & Continuous outcome analysis \\
+\texttt{pyexpstats.effects.outcome.timing} & Time-to-event analysis \\
+\texttt{pyexpstats.methods.bayesian} & Bayesian inference \\
+\texttt{pyexpstats.methods.sequential} & Sequential testing \\
+\texttt{pyexpstats.diagnostics} & Experiment health checks \\
+\texttt{pyexpstats.segments} & Segment analysis \\
+\texttt{pyexpstats.business} & Impact projections \\
+\texttt{pyexpstats.planning} & Duration estimation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{Comparison with Existing Tools}
+
+\begin{table}[H]
+\centering
+\caption{Comparison with existing A/B testing tools}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Feature} & \textbf{pyexpstats} & \textbf{statsmodels} & \textbf{scipy} & \textbf{abtest} \\
+\midrule
+Sample size calculation & \checkmark & \checkmark & -- & \checkmark \\
+Frequentist testing & \checkmark & \checkmark & \checkmark & \checkmark \\
+Bayesian testing & \checkmark & -- & -- & -- \\
+Sequential testing & \checkmark & -- & -- & -- \\
+SRM detection & \checkmark & -- & -- & -- \\
+Novelty detection & \checkmark & -- & -- & -- \\
+Segment analysis & \checkmark & -- & -- & -- \\
+Web UI & \checkmark & -- & -- & -- \\
+Business-friendly & \checkmark & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{Installation and Usage}
+
+\begin{lstlisting}[language=bash, caption=Installation]
+pip install pyexpstats
+\end{lstlisting}
+
+To run the web interface:
+
+\begin{lstlisting}[language=bash, caption=Starting the web server]
+pyexpstats-server
+\end{lstlisting}
+
+\section*{Testing}
+
+pyexpstats includes a comprehensive test suite with 367+ tests covering:
+
+\begin{itemize}
+    \item Statistical correctness validation
+    \item Edge case handling
+    \item API endpoint testing
+    \item Integration tests
+\end{itemize}
+
+\begin{lstlisting}[language=bash, caption=Running tests]
+pytest tests/ -v
+\end{lstlisting}
+
+\section*{Documentation}
+
+Full documentation is available at \url{https://github.com/pyexpstats/pyexpstats}, including:
+
+\begin{itemize}
+    \item API reference
+    \item Usage examples
+    \item Statistical methodology explanations
+    \item Web UI guide
+\end{itemize}
+
+\section*{Acknowledgements}
+
+We thank the open-source community for the foundational libraries that make pyexpstats possible, particularly NumPy, SciPy, and FastAPI.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

@@ -32,7 +32,7 @@ This isolates the treatment effect by subtracting out the natural trend observed
 ### Basic Example
 
 ```python
-from expstats import conversion
+from pyexpstats import conversion
 
 # You launched a new feature to West Coast users
 # East Coast users serve as the control group
@@ -82,7 +82,7 @@ Without DiD, you might have claimed a 1.50% improvement, but 0.25% of that was j
 ### Basic Example
 
 ```python
-from expstats import magnitude
+from pyexpstats import magnitude
 
 # Testing a premium checkout experience
 # Rolled out to "Gold" tier customers first

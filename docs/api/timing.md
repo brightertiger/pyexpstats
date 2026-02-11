@@ -19,7 +19,7 @@ Compare time-to-event between two groups using log-rank tests and hazard ratios.
 ### analyze()
 
 ```python
-from expstats import timing
+from pyexpstats import timing
 
 result = timing.analyze(
     control_times=[5, 8, 12, 15, 18, 22, 25, 30, 35, 40],
@@ -293,7 +293,7 @@ Same conversion rate! But the treatment **doubles** the speed of conversion. Tha
 ## Full Example
 
 ```python
-from expstats import timing
+from pyexpstats import timing
 
 # Scenario: Testing if a new onboarding flow speeds up first purchase
 

@@ -1,4 +1,4 @@
-from expstats.utils.validation import (
+from pyexpstats.utils.validation import (
     validate_rate,
     validate_positive,
     validate_alpha,
@@ -7,14 +7,14 @@ from expstats.utils.validation import (
     validate_sidedness,
     validate_allocation_ratio,
 )
-from expstats.utils.math import (
+from pyexpstats.utils.math import (
     pooled_proportion,
     pooled_variance,
     effect_size_cohens_h,
     effect_size_cohens_d,
     welch_degrees_of_freedom,
 )
-from expstats.utils.stats import (
+from pyexpstats.utils.stats import (
     z_alpha,
     z_beta,
     t_critical,

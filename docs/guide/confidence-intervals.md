@@ -21,7 +21,7 @@ A confidence interval tells you "how big is the difference likely to be?"
 Get the range for a single conversion rate:
 
 ```python
-from expstats import conversion
+from pyexpstats import conversion
 
 ci = conversion.confidence_interval(
     visitors=1000,
@@ -46,7 +46,7 @@ Margin of error: ±1.35%
 Get the range for a numeric metric:
 
 ```python
-from expstats import magnitude
+from pyexpstats import magnitude
 
 ci = magnitude.confidence_interval(
     visitors=1000,
@@ -124,13 +124,13 @@ Higher confidence = wider interval.
 
 ### For Conversion Rates
 
-expstats uses the **Wilson score interval**, which is more accurate than the normal approximation for:
+pyexpstats uses the **Wilson score interval**, which is more accurate than the normal approximation for:
 - Small samples
 - Rates near 0% or 100%
 
 ### For Numeric Metrics
 
-expstats uses the **t-distribution**, which accounts for uncertainty in the standard deviation estimate.
+pyexpstats uses the **t-distribution**, which accounts for uncertainty in the standard deviation estimate.
 
 ## Best Practices
 
