@@ -180,7 +180,8 @@ def detect_novelty_effect(
     weekly_change = slope * 7
 
     # Determine effect type
-    if abs(weekly_change) < trend_threshold * abs(initial_lift) if initial_lift != 0 else 0.5:
+    stability_threshold = trend_threshold * abs(initial_lift) if initial_lift != 0 else 0.5
+    if abs(weekly_change) < stability_threshold:
         effect_type = "stable"
         effect_detected = False
     elif weekly_change < 0:
@@ -206,7 +207,7 @@ def detect_novelty_effect(
                     days_to_steady = int(abs(current_lift / slope)) if slope != 0 else None
 
     # Calculate confidence based on R-squared and p-value
-    confidence = (1 - p_value) * abs(r_value) * 100 if p_value < 0.5 else 0
+    confidence = (1 - p_value) * abs(r_value) * 100 if p_value < 0.05 else 0
 
     # Generate warning and recommendation
     warning, recommendation = _generate_warnings(

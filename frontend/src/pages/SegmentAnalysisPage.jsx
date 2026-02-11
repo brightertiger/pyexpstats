@@ -271,7 +271,9 @@ function SegmentAnalysisPage() {
                         {seg.lift_percent >= 0 ? '+' : ''}{seg.lift_percent.toFixed(2)}%
                       </td>
                       <td className="mono" style={{ fontSize: '12px' }}>
-                        {seg.lift_ci_lower?.toFixed(1)}% to {seg.lift_ci_upper?.toFixed(1)}%
+                        {seg.lift_ci_lower != null && seg.lift_ci_upper != null
+                          ? `${seg.lift_ci_lower.toFixed(1)}% to ${seg.lift_ci_upper.toFixed(1)}%`
+                          : 'N/A'}
                       </td>
                       <td className="mono">{seg.is_significant ? 'High' : 'Low'}</td>
                       <td>
@@ -317,7 +319,7 @@ function SegmentAnalysisPage() {
           {result.recommendation && (
             <div className="callout callout-info" style={{ marginTop: '20px' }}>
               <div className="callout-text markdown-content">
-                <ReactMarkdown>{result.recommendation}</ReactMarkdown>
+                <ReactMarkdown>{String(result.recommendation || '')}</ReactMarkdown>
               </div>
             </div>
           )}

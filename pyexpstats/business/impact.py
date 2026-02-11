@@ -143,9 +143,10 @@ def project_impact(
         probability_positive = 1.0 if lift_percent > 0 else 0.0
         probability_negative = 1 - probability_positive
 
-    # Expected value (considering uncertainty)
-    # Simple model: weighted average of outcomes
-    expected_value = annual_revenue_lift * probability_positive
+    # Expected value (considering both upside and downside risk)
+    # Uses the full distribution: E[X] = mean of normal with given SE
+    # For a normal distribution, E[X] = mu where mu = annual_revenue_lift
+    expected_value = annual_revenue_lift  # unbiased expected value from the point estimate
 
     # Generate recommendation
     recommendation = _generate_recommendation(

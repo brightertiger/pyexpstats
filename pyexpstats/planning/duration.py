@@ -135,9 +135,13 @@ def recommend_duration(
 
     # Calculate confidence at different stopping points
     def power_at_n(n):
+        if n <= 0:
+            return 0.0
         se = math.sqrt(2 * p_pooled * (1 - p_pooled) / n)
+        if se <= 0:
+            return 1.0
         z_effect = abs(p2 - p1) / se
-        return norm.cdf(z_effect - z_alpha)
+        return norm.cdf(z_effect - z_alpha) + norm.cdf(-z_effect - z_alpha)
 
     confidence_at_minimum = power_at_n(visitors_per_variant_per_day * minimum_days) * 100
     confidence_at_recommended = power_at_n(visitors_per_variant_per_day * recommended_days) * 100

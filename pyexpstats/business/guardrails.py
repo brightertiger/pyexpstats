@@ -342,7 +342,9 @@ def _check_ratio_guardrail(
     critical: float,
     alpha: float,
 ) -> GuardrailResult:
-    """Check guardrail for a ratio metric (e.g., revenue per user)."""
+    """Check guardrail for a ratio metric (e.g., revenue per user) using delta method."""
+    import numpy as np
+
     control_total = control_data["total_value"]
     control_count = control_data["count"]
     variant_total = variant_data["total_value"]
@@ -357,12 +359,27 @@ def _check_ratio_guardrail(
     else:
         change_percent = 0 if variant_ratio == 0 else float('inf')
 
-    # Bootstrap or approximate t-test for ratios
-    # Using simple approximation here
-    p_value = 0.5  # Placeholder - would need bootstrap for proper test
-    is_significant = abs(change_percent) > threshold
+    # Delta method for ratio variance: Var(total/count) ≈ (1/count) * Var(per-unit)
+    # Approximate SE using provided stats or fallback to Poisson-like variance
+    control_var = control_data.get("variance", control_ratio)  # fallback: assume variance ≈ mean
+    variant_var = variant_data.get("variance", variant_ratio)
 
-    ci = (change_percent * 0.5, change_percent * 1.5)  # Rough approximation
+    se_control = math.sqrt(control_var / control_count) if control_count > 0 else 0
+    se_variant = math.sqrt(variant_var / variant_count) if variant_count > 0 else 0
+    se_diff = math.sqrt(se_control**2 + se_variant**2)
+
+    # Z-test for difference of ratios
+    diff = variant_ratio - control_ratio
+    if se_diff > 0:
+        z_stat = diff / se_diff
+        p_value = 2 * (1 - scipy_stats.norm.cdf(abs(z_stat)))
+    else:
+        p_value = 1.0
+
+    is_significant = p_value < alpha
+
+    z_crit = scipy_stats.norm.ppf(1 - alpha / 2)
+    ci = (diff - z_crit * se_diff, diff + z_crit * se_diff)
 
     # Determine if it's a bad change
     is_bad_direction = (

@@ -276,21 +276,23 @@ class MagnitudeEffect(FullOutcomeEffect):
                 f"Consider running the test longer to collect more data."
             )
     
-    def _pairwise_welch_t_test(self, v1: MagnitudeVariant, v2: MagnitudeVariant, confidence: int) -> MagnitudePairwiseComparison:
+    def _pairwise_welch_t_test(self, v1: MagnitudeVariant, v2: MagnitudeVariant, confidence: int, num_comparisons: int = 1) -> MagnitudePairwiseComparison:
         lift_absolute, lift_percent = lift_calculations(v1.mean, v2.mean)
-        
+
         test_result = welch_t_test(
             v1.mean, v1.std, v1.visitors,
             v2.mean, v2.std, v2.visitors,
             confidence,
         )
-        
+
         se = mean_difference_se(v1.std, v1.visitors, v2.std, v2.visitors)
         df = welch_df(v1.std**2, v2.std**2, v1.visitors, v2.visitors)
-        t_crit = t_critical(df, confidence)
+        # Adjust CI for multiple comparisons (Bonferroni)
+        adjusted_confidence = 100 - (100 - confidence) / num_comparisons if num_comparisons > 1 else confidence
+        t_crit = t_critical(df, int(adjusted_confidence))
         ci_lower = lift_absolute - t_crit * se
         ci_upper = lift_absolute + t_crit * se
-        
+
         return MagnitudePairwiseComparison(
             variant_a=v1.name,
             variant_b=v2.name,
@@ -344,11 +346,18 @@ class MagnitudeEffect(FullOutcomeEffect):
         df_within = N - k
         
         ms_between = ss_between / df_between if df_between > 0 else 0
-        ms_within = ss_within / df_within if df_within > 0 else 1
-        
-        f_stat = ms_between / ms_within if ms_within > 0 else 0
-        
-        p_value = 1 - f_dist.cdf(f_stat, df_between, df_within) if f_stat > 0 else 1.0
+        ms_within = ss_within / df_within if df_within > 0 else 0
+
+        if ms_within > 0:
+            f_stat = ms_between / ms_within
+            p_value = 1 - f_dist.cdf(f_stat, df_between, df_within) if f_stat > 0 else 1.0
+        elif ms_between > 0:
+            # Perfect separation: all within-group variance is zero but groups differ
+            f_stat = float('inf')
+            p_value = 0.0
+        else:
+            f_stat = 0.0
+            p_value = 1.0
         
         alpha = 1 - (confidence / 100)
         is_significant = p_value < alpha
@@ -363,7 +372,7 @@ class MagnitudeEffect(FullOutcomeEffect):
         
         for i in range(len(variant_objects)):
             for j in range(i + 1, len(variant_objects)):
-                comparison = self._pairwise_welch_t_test(variant_objects[i], variant_objects[j], confidence)
+                comparison = self._pairwise_welch_t_test(variant_objects[i], variant_objects[j], confidence, num_comparisons)
                 
                 if correction == "bonferroni":
                     comparison.p_value_adjusted = bonferroni_correction(comparison.p_value, num_comparisons)
@@ -623,7 +632,7 @@ class MagnitudeEffect(FullOutcomeEffect):
         alpha = 1 - (confidence / 100)
         
         total_n = control_pre_n + control_post_n + treatment_pre_n + treatment_post_n
-        df = total_n - 4
+        df = max(1, total_n - 4)
         
         if se_did > 0 and df > 0:
             t_stat = did / se_did

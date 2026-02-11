@@ -883,7 +883,7 @@ class TestMathUtilEdgeCases:
 
     def test_calculate_lift_zero_baseline(self):
         """Lift calculation with zero baseline."""
-        relative, absolute = calculate_lift(0, 10)
+        absolute, relative = calculate_lift(0, 10)
         assert absolute == 10
         assert relative == np.inf or np.isnan(relative) or relative > 0
 

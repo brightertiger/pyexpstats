@@ -111,11 +111,31 @@ def _kaplan_meier(times: np.ndarray, events: np.ndarray, confidence: int = 95) -
     variance = np.array([0.0] + variance)
     km_times = np.array(km_times)
     
-    se = np.sqrt(variance) * survival
     alpha = 1 - confidence / 100
     z = stats.norm.ppf(1 - alpha / 2)
-    ci_lower = np.maximum(0, survival - z * se)
-    ci_upper = np.minimum(1, survival + z * se)
+
+    # Use log transformation for CIs to ensure they stay in [0, 1]
+    with np.errstate(divide='ignore', invalid='ignore'):
+        log_survival = np.log(-np.log(np.clip(survival, 1e-10, 1 - 1e-10)))
+        # Greenwood variance on log(-log(S)) scale
+        se_log_log = np.where(
+            (survival > 0) & (survival < 1) & (variance > 0),
+            np.sqrt(variance) / np.abs(np.log(np.clip(survival, 1e-10, 1 - 1e-10))),
+            0.0,
+        )
+        ci_lower = np.where(
+            se_log_log > 0,
+            np.clip(survival ** np.exp(z * se_log_log), 0, 1),
+            survival,
+        )
+        ci_upper = np.where(
+            se_log_log > 0,
+            np.clip(survival ** np.exp(-z * se_log_log), 0, 1),
+            survival,
+        )
+    # First time point (t=0) always has S=1 with no uncertainty
+    ci_lower[0] = 1.0
+    ci_upper[0] = 1.0
     
     return km_times, survival, ci_lower, ci_upper
 
@@ -388,8 +408,9 @@ def sample_size(
         allocation_ratio=allocation_ratio,
     )
     
-    event_probability = 1 - dropout_rate
-    subjects_per_group = int(np.ceil(result.n_total / (2 * event_probability)))
+    # Adjust for dropout: need more subjects since some will be lost to follow-up
+    retention_rate = 1 - dropout_rate
+    subjects_per_group = int(np.ceil(result.n_per_group / retention_rate))
     
     return TimingSampleSizePlan(
         subjects_per_group=subjects_per_group,

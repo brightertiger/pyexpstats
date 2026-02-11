@@ -273,19 +273,21 @@ class ConversionEffect(FullOutcomeEffect):
                 f"Consider running the test longer to collect more data."
             )
     
-    def _pairwise_z_test(self, v1: ConversionVariant, v2: ConversionVariant, confidence: int) -> ConversionPairwiseComparison:
+    def _pairwise_z_test(self, v1: ConversionVariant, v2: ConversionVariant, confidence: int, num_comparisons: int = 1) -> ConversionPairwiseComparison:
         p1 = v1.rate
         p2 = v2.rate
-        
+
         lift_absolute, lift_percent = lift_calculations(p1, p2)
-        
+
         test_result = z_test_two_proportions(p1, v1.visitors, p2, v2.visitors, confidence)
-        
+
         se_diff = proportion_difference_se(p1, v1.visitors, p2, v2.visitors)
-        z_crit = get_z_alpha(confidence)
+        # Adjust CI for multiple comparisons (Bonferroni)
+        adjusted_confidence = 100 - (100 - confidence) / num_comparisons if num_comparisons > 1 else confidence
+        z_crit = get_z_alpha(int(adjusted_confidence))
         ci_lower = lift_absolute - z_crit * se_diff
         ci_upper = lift_absolute + z_crit * se_diff
-        
+
         return ConversionPairwiseComparison(
             variant_a=v1.name,
             variant_b=v2.name,
@@ -342,7 +344,7 @@ class ConversionEffect(FullOutcomeEffect):
         
         for i in range(len(variant_objects)):
             for j in range(i + 1, len(variant_objects)):
-                comparison = self._pairwise_z_test(variant_objects[i], variant_objects[j], confidence)
+                comparison = self._pairwise_z_test(variant_objects[i], variant_objects[j], confidence, num_comparisons)
                 
                 if correction == "bonferroni":
                     comparison.p_value_adjusted = bonferroni_correction(comparison.p_value, num_comparisons)

@@ -69,6 +69,7 @@ function SignificanceCalculator() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setResult(null)
 
     let endpoint, payload
 
@@ -835,7 +836,7 @@ function SignificanceCalculator() {
 
           <div className={`callout ${result.is_significant ? 'callout-success' : 'callout-warning'}`} style={{ marginTop: '16px' }}>
             <div className="callout-text markdown-content">
-              <ReactMarkdown>{result.recommendation}</ReactMarkdown>
+              <ReactMarkdown>{String(result.recommendation || '')}</ReactMarkdown>
             </div>
           </div>
         </div>
@@ -948,7 +949,7 @@ function SignificanceCalculator() {
 
           <div className={`callout ${result.is_significant ? 'callout-success' : 'callout-warning'}`} style={{ marginTop: '16px' }}>
             <div className="callout-text markdown-content">
-              <ReactMarkdown>{result.recommendation}</ReactMarkdown>
+              <ReactMarkdown>{String(result.recommendation || '')}</ReactMarkdown>
             </div>
           </div>
         </div>

@@ -190,10 +190,7 @@ def check_health(
 
         if se > 0:
             z_effect = effect_size / se
-            power = norm.cdf(z_effect - 1.96) + norm.cdf(-z_effect - 1.96)
-            power = max(0, min(1, 1 - power))  # Adjust for two-sided
-            # More accurate power calculation
-            power = norm.cdf(z_effect - norm.ppf(0.975))
+            power = norm.cdf(z_effect - norm.ppf(0.975)) + norm.cdf(-z_effect - norm.ppf(0.975))
         else:
             power = 0
 

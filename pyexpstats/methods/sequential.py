@@ -212,7 +212,7 @@ def analyze(
     lift_percent = (lift_absolute / p1 * 100) if p1 > 0 else 0
 
     # Calculate information fraction (how far through the test)
-    current_visitors = min(control_visitors, variant_visitors)
+    current_visitors = (control_visitors + variant_visitors) / 2
     information_fraction = min(current_visitors / expected_visitors_per_variant, 1.0)
 
     # Get boundaries

@@ -464,7 +464,7 @@ function TimingCalculator() {
 
           <div className={`callout ${result.is_significant ? 'callout-success' : 'callout-warning'}`} style={{ marginTop: '16px' }}>
             <div className="callout-text markdown-content">
-              <ReactMarkdown>{result.recommendation}</ReactMarkdown>
+              <ReactMarkdown>{String(result.recommendation || '')}</ReactMarkdown>
             </div>
           </div>
         </div>
@@ -574,7 +574,7 @@ function TimingCalculator() {
 
           <div className={`callout ${result.is_significant ? 'callout-success' : 'callout-warning'}`} style={{ marginTop: '16px' }}>
             <div className="callout-text markdown-content">
-              <ReactMarkdown>{result.recommendation}</ReactMarkdown>
+              <ReactMarkdown>{String(result.recommendation || '')}</ReactMarkdown>
             </div>
           </div>
         </div>

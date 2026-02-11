@@ -34,6 +34,8 @@ def t_ppf(p: float, df: float) -> float:
     return t.ppf(p, df)
 
 def welch_degrees_of_freedom(var1: float, var2: float, n1: int, n2: int) -> float:
+    if n1 <= 1 or n2 <= 1:
+        return max(1.0, float(n1 + n2 - 2))
     se1_sq = var1 / n1
     se2_sq = var2 / n2
     numerator = (se1_sq + se2_sq) ** 2
@@ -44,7 +46,7 @@ def welch_degrees_of_freedom(var1: float, var2: float, n1: int, n2: int) -> floa
 
 def calculate_lift(baseline: float, variant: float) -> Tuple[float, float]:
     if baseline == 0:
-        return (np.inf if variant > 0 else 0.0, variant)
+        return (variant, np.inf if variant > 0 else 0.0)
     absolute_lift = variant - baseline
     relative_lift = (variant - baseline) / baseline
-    return relative_lift, absolute_lift
+    return absolute_lift, relative_lift

@@ -49,6 +49,8 @@ def t_critical(df: float, confidence: int = 95, two_sided: bool = True) -> float
 
 
 def welch_df(var1: float, var2: float, n1: int, n2: int) -> float:
+    if n1 <= 1 or n2 <= 1:
+        return max(1.0, float(n1 + n2 - 2))
     se1_sq = var1 / n1
     se2_sq = var2 / n2
     numerator = (se1_sq + se2_sq) ** 2
@@ -65,27 +67,31 @@ def sample_size_two_proportions(
     power: int = 80,
     num_groups: int = 2,
 ) -> SampleSizeResult:
+    if abs(p2 - p1) < 1e-12:
+        raise ValueError("p1 and p2 must be different to calculate sample size")
+
     alpha = 1 - confidence / 100
     if num_groups > 2:
-        alpha = alpha / (num_groups - 1)
-    
+        num_comparisons = num_groups * (num_groups - 1) // 2
+        alpha = alpha / num_comparisons
+
     beta = 1 - power / 100
-    
+
     za = norm.ppf(1 - alpha / 2)
     zb = norm.ppf(1 - beta)
-    
+
     p_pooled = (p1 + p2) / 2
-    
+
     numerator = (
         za * math.sqrt(2 * p_pooled * (1 - p_pooled)) +
         zb * math.sqrt(p1 * (1 - p1) + p2 * (1 - p2))
     ) ** 2
     denominator = (p2 - p1) ** 2
-    
+
     n = math.ceil(numerator / denominator)
-    
+
     effect_size = abs(p2 - p1) / math.sqrt(p_pooled * (1 - p_pooled))
-    
+
     return SampleSizeResult(
         n_per_group=n,
         n_total=n * num_groups,
@@ -102,9 +108,13 @@ def sample_size_two_means(
     power: int = 80,
     num_groups: int = 2,
 ) -> SampleSizeResult:
+    if abs(effect_size) < 1e-12:
+        raise ValueError("effect_size must be non-zero to calculate sample size")
+
     alpha = 1 - confidence / 100
     if num_groups > 2:
-        alpha = alpha / (num_groups - 1)
+        num_comparisons = num_groups * (num_groups - 1) // 2
+        alpha = alpha / num_comparisons
     
     beta = 1 - power / 100
     
@@ -304,13 +314,17 @@ def hazard_ratio_from_events(
     trt_time: float,
     confidence: int = 95,
 ) -> Tuple[float, float, float]:
-    if ctrl_events == 0 or trt_events == 0:
+    if ctrl_events == 0 and trt_events == 0:
         return 1.0, 0.0, float('inf')
-    
+    if ctrl_events == 0:
+        return float('inf'), 0.0, float('inf')
+    if trt_events == 0:
+        return 0.0, 0.0, float('inf')
+
     ctrl_rate = ctrl_events / ctrl_time if ctrl_time > 0 else 0
     trt_rate = trt_events / trt_time if trt_time > 0 else 0
-    
-    hr = trt_rate / ctrl_rate if ctrl_rate > 0 else 1.0
+
+    hr = trt_rate / ctrl_rate if ctrl_rate > 0 else float('inf')
     
     se_log_hr = math.sqrt(1/ctrl_events + 1/trt_events)
     log_hr = math.log(hr) if hr > 0 else 0

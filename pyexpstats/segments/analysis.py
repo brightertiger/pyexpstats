@@ -389,21 +389,25 @@ def _detect_heterogeneity(results: List[SegmentResult]) -> bool:
     if len(lifts) < 2:
         return False
 
-    # Check if some segments have opposite signs
-    positive = sum(1 for l in lifts if l > 5)  # >5% lift
-    negative = sum(1 for l in lifts if l < -5)  # <-5% lift
+    # Check if some segments have opposite signs (using meaningful threshold)
+    mean_lift = sum(lifts) / len(lifts)
+    positive = sum(1 for l in lifts if l > 2)  # >2% lift
+    negative = sum(1 for l in lifts if l < -2)  # <-2% lift
 
     # Heterogeneity if some segments strongly positive and some strongly negative
     if positive > 0 and negative > 0:
         return True
 
     # Also check variance of lifts
-    mean_lift = sum(lifts) / len(lifts)
     variance = sum((l - mean_lift)**2 for l in lifts) / len(lifts)
     std_lift = math.sqrt(variance)
 
     # High variance relative to mean suggests heterogeneity
-    return std_lift > abs(mean_lift) * 0.5 if mean_lift != 0 else std_lift > 10
+    # Use coefficient of variation when mean is non-zero, absolute threshold otherwise
+    if abs(mean_lift) > 1:
+        return std_lift > abs(mean_lift) * 0.75
+    else:
+        return std_lift > 5
 
 
 def _check_simpsons_paradox(results: List[SegmentResult], overall_lift: float) -> bool:

@@ -253,7 +253,7 @@ function ImpactProjectionPage() {
               <div className="stats-card">
                 <div className="stats-card-label">Expected Revenue Range</div>
                 <div className="stats-card-value">
-                  ${result.confidence_interval.revenue_lower?.toLocaleString()} to ${result.confidence_interval.revenue_upper?.toLocaleString()}
+                  ${result.confidence_interval?.revenue_lower?.toLocaleString() ?? 'N/A'} to ${result.confidence_interval?.revenue_upper?.toLocaleString() ?? 'N/A'}
                 </div>
                 <div className="stats-card-explanation">
                   We're {result.confidence}% confident the real impact falls in this range.
@@ -261,7 +261,7 @@ function ImpactProjectionPage() {
               </div>
               <div className="stats-card">
                 <div className="stats-card-label">Chance of Positive Impact</div>
-                <div className="stats-card-value">{(result.probability_positive * 100)?.toFixed(1)}%</div>
+                <div className="stats-card-value">{result.probability_positive != null ? (result.probability_positive * 100).toFixed(1) : 'N/A'}%</div>
                 <div className="stats-card-explanation">
                   Likelihood that shipping the variant will increase revenue.
                 </div>
@@ -286,7 +286,7 @@ function ImpactProjectionPage() {
           {result.recommendation && (
             <div className={`callout ${result.is_significant ? 'callout-success' : 'callout-warning'}`} style={{ marginTop: '16px' }}>
               <div className="callout-text markdown-content">
-                <ReactMarkdown>{result.recommendation}</ReactMarkdown>
+                <ReactMarkdown>{String(result.recommendation || '')}</ReactMarkdown>
               </div>
             </div>
           )}

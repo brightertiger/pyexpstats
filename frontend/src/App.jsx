@@ -115,7 +115,7 @@ function App() {
         </nav>
 
         <a
-          href="https://github.com/pyexptest/pyexptest"
+          href="https://github.com/brightertiger/pyexpstats"
           target="_blank"
           rel="noopener noreferrer"
           className="github-link"
