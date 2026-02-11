@@ -289,7 +289,7 @@ class MagnitudeEffect(FullOutcomeEffect):
         df = welch_df(v1.std**2, v2.std**2, v1.visitors, v2.visitors)
         # Adjust CI for multiple comparisons (Bonferroni)
         adjusted_confidence = 100 - (100 - confidence) / num_comparisons if num_comparisons > 1 else confidence
-        t_crit = t_critical(df, int(adjusted_confidence))
+        t_crit = t_critical(df, round(adjusted_confidence))
         ci_lower = lift_absolute - t_crit * se
         ci_upper = lift_absolute + t_crit * se
 

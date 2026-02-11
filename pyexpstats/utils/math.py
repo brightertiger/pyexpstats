@@ -5,6 +5,8 @@ def pooled_proportion(p1: float, p2: float, n1: int, n2: int) -> float:
     return (p1 * n1 + p2 * n2) / (n1 + n2)
 
 def pooled_variance(var1: float, var2: float, n1: int, n2: int) -> float:
+    if n1 + n2 <= 2:
+        return (var1 + var2) / 2 if (var1 + var2) > 0 else 0.0
     return ((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2)
 
 def effect_size_cohens_h(p1: float, p2: float) -> float:

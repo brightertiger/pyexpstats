@@ -207,7 +207,7 @@ def detect_novelty_effect(
                     days_to_steady = int(abs(current_lift / slope)) if slope != 0 else None
 
     # Calculate confidence based on R-squared and p-value
-    confidence = (1 - p_value) * abs(r_value) * 100 if p_value < 0.05 else 0
+    confidence = (1 - p_value) * r_value ** 2 * 100 if p_value < 0.05 else 0
 
     # Generate warning and recommendation
     warning, recommendation = _generate_warnings(

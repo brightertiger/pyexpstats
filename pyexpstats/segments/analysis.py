@@ -333,6 +333,12 @@ def _apply_holm_correction(
         # Update significance based on Holm threshold
         is_significant = result.p_value < adjusted_alpha
         # Create new result with updated significance
+        new_winner = result.winner if is_significant else "no_difference"
+        new_interpretation = _interpret_segment(
+            result.segment_name, result.segment_value, result.lift_percent,
+            is_significant, result.is_significant_uncorrected,
+            result.sample_size_adequate, result.p_value,
+        )
         results[idx] = SegmentResult(
             segment_name=result.segment_name,
             segment_value=result.segment_value,
@@ -348,14 +354,19 @@ def _apply_holm_correction(
             p_value=result.p_value,
             is_significant=is_significant,
             is_significant_uncorrected=result.is_significant_uncorrected,
-            winner=result.winner if is_significant else "no_difference",
+            winner=new_winner,
             sample_size_adequate=result.sample_size_adequate,
-            interpretation=result.interpretation,
+            interpretation=new_interpretation,
         )
         # Holm requires rejection in order - if one fails, all subsequent fail
         if not is_significant:
             for remaining_idx in sorted_indices[rank:]:
                 r = results[remaining_idx]
+                rem_interpretation = _interpret_segment(
+                    r.segment_name, r.segment_value, r.lift_percent,
+                    False, r.is_significant_uncorrected,
+                    r.sample_size_adequate, r.p_value,
+                )
                 results[remaining_idx] = SegmentResult(
                     segment_name=r.segment_name,
                     segment_value=r.segment_value,
@@ -373,7 +384,7 @@ def _apply_holm_correction(
                     is_significant_uncorrected=r.is_significant_uncorrected,
                     winner="no_difference",
                     sample_size_adequate=r.sample_size_adequate,
-                    interpretation=r.interpretation,
+                    interpretation=rem_interpretation,
                 )
             break
 

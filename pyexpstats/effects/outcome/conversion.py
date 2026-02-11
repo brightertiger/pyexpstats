@@ -284,7 +284,7 @@ class ConversionEffect(FullOutcomeEffect):
         se_diff = proportion_difference_se(p1, v1.visitors, p2, v2.visitors)
         # Adjust CI for multiple comparisons (Bonferroni)
         adjusted_confidence = 100 - (100 - confidence) / num_comparisons if num_comparisons > 1 else confidence
-        z_crit = get_z_alpha(int(adjusted_confidence))
+        z_crit = get_z_alpha(round(adjusted_confidence))
         ci_lower = lift_absolute - z_crit * se_diff
         ci_upper = lift_absolute + z_crit * se_diff
 

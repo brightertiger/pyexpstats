@@ -140,12 +140,14 @@ def sample_size_survival(
     power: int = 80,
     allocation_ratio: float = 1.0,
 ) -> SampleSizeResult:
+    if hr <= 0:
+        raise ValueError("Hazard ratio must be positive")
     alpha = 1 - confidence / 100
     beta = 1 - power / 100
-    
+
     za = norm.ppf(1 - alpha / 2)
     zb = norm.ppf(1 - beta)
-    
+
     log_hr = math.log(hr)
     if abs(log_hr) < 0.001:
         raise ValueError("Hazard ratio too close to 1")
@@ -254,11 +256,13 @@ def mean_ci(
     n: int,
     confidence: int = 95,
 ) -> Tuple[float, float, float, float]:
+    if n <= 1:
+        return mean, float('-inf'), float('inf'), float('inf')
     alpha = 1 - confidence / 100
     se = std / math.sqrt(n)
     t_crit = t.ppf(1 - alpha / 2, n - 1)
     margin = t_crit * se
-    
+
     return mean, mean - margin, mean + margin, margin
 
 
