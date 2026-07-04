@@ -210,11 +210,17 @@ def _check_mean_guardrail(
     # Welch's t-test (unequal variances)
     t_stat, p_value = scipy_stats.ttest_ind(variant_array, control_array, equal_var=False)
 
-    # Confidence interval for the difference
+    # Confidence interval for the difference (Welch-Satterthwaite df, matching the Welch p-value)
     n1, n2 = len(control_array), len(variant_array)
     s1, s2 = np.std(control_array, ddof=1), np.std(variant_array, ddof=1)
     se = math.sqrt(s1**2/n1 + s2**2/n2) if n1 > 0 and n2 > 0 else 0
-    t_crit = scipy_stats.t.ppf(1 - alpha/2, min(n1, n2) - 1) if min(n1, n2) > 1 else 1.96
+    if min(n1, n2) > 1 and se > 0:
+        df = (s1**2/n1 + s2**2/n2) ** 2 / (
+            (s1**2/n1) ** 2 / (n1 - 1) + (s2**2/n2) ** 2 / (n2 - 1)
+        )
+        t_crit = scipy_stats.t.ppf(1 - alpha/2, df)
+    else:
+        t_crit = scipy_stats.norm.ppf(1 - alpha/2)
     diff = variant_mean - control_mean
     ci = (diff - t_crit * se, diff + t_crit * se)
 
@@ -293,7 +299,7 @@ def _check_proportion_guardrail(
     se_control = math.sqrt(control_rate * (1 - control_rate) / control_total) if control_total > 0 else 0
     se_variant = math.sqrt(variant_rate * (1 - variant_rate) / variant_total) if variant_total > 0 else 0
     se_diff = math.sqrt(se_control**2 + se_variant**2)
-    z_crit = 1.96  # For 95% CI
+    z_crit = scipy_stats.norm.ppf(1 - alpha / 2)
     diff = variant_rate - control_rate
     ci = (diff - z_crit * se_diff, diff + z_crit * se_diff)
 
@@ -361,6 +367,7 @@ def _check_ratio_guardrail(
 
     # Delta method for ratio variance: Var(total/count) ≈ (1/count) * Var(per-unit)
     # Approximate SE using provided stats or fallback to Poisson-like variance
+    variance_assumed = "variance" not in control_data or "variance" not in variant_data
     control_var = control_data.get("variance", control_ratio)  # fallback: assume variance ≈ mean
     variant_var = variant_data.get("variance", variant_ratio)
 
@@ -400,6 +407,11 @@ def _check_ratio_guardrail(
         name, control_ratio, variant_ratio, change_percent,
         is_significant, p_value, direction, status
     )
+    if variance_assumed:
+        interpretation += (
+            " Note: no 'variance' was provided, so the significance test assumes "
+            "variance ≈ mean (Poisson-like); provide per-unit variance for a reliable p-value."
+        )
 
     return GuardrailResult(
         name=name,

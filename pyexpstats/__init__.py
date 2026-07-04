@@ -11,7 +11,7 @@ from pyexpstats import planning
 from pyexpstats import business
 from pyexpstats import segments
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     # Core effects

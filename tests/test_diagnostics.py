@@ -447,14 +447,23 @@ class TestDiagnosticsIntegration:
         )
         assert srm.is_valid
 
-        # Health check
+        # Health check (sample large enough for >=80% power at the default 10% MDE)
         health = check_health(
+            control_visitors=40000,
+            control_conversions=2000,
+            variant_visitors=40000,
+            variant_conversions=2200,
+        )
+        assert health.can_trust_results
+
+        # An underpowered test must not be trusted, even if other checks pass
+        underpowered = check_health(
             control_visitors=5000,
             control_conversions=250,
             variant_visitors=5000,
             variant_conversions=275,
         )
-        assert health.can_trust_results
+        assert not underpowered.can_trust_results
 
         # Novelty check
         daily_results = [

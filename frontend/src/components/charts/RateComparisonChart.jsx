@@ -1,4 +1,5 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine, ErrorBar } from 'recharts'
+import { chartTheme } from './theme'
 
 function RateComparisonChart({
   controlRate,
@@ -8,20 +9,26 @@ function RateComparisonChart({
   label = 'Event Rate',
   unit = 'per day'
 }) {
+  const t = chartTheme()
   if (controlRate === undefined || treatmentRate === undefined) return null
 
   const data = [
     {
       name: 'Control',
       rate: controlRate,
+      error: controlCI ? [controlRate - controlCI[0], controlCI[1] - controlRate] : [0, 0],
     },
     {
       name: 'Treatment',
       rate: treatmentRate,
+      error: treatmentCI ? [treatmentRate - treatmentCI[0], treatmentCI[1] - treatmentRate] : [0, 0],
     }
   ]
 
-  const maxRate = Math.max(controlRate, treatmentRate) * 1.3
+  const maxRate = Math.max(
+    controlCI ? controlCI[1] : controlRate,
+    treatmentCI ? treatmentCI[1] : treatmentRate
+  ) * 1.15
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -36,7 +43,9 @@ function RateComparisonChart({
     return null
   }
 
-  const percentChange = ((treatmentRate - controlRate) / controlRate * 100).toFixed(1)
+  const percentChange = controlRate !== 0
+    ? ((treatmentRate - controlRate) / controlRate * 100).toFixed(1)
+    : null
 
   return (
     <div className="rate-comparison-container">
@@ -45,36 +54,41 @@ function RateComparisonChart({
         <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <XAxis 
             dataKey="name" 
-            tick={{ fontSize: 12, fill: '#6b6b6b' }}
-            axisLine={{ stroke: 'rgba(55, 53, 47, 0.09)' }}
+            tick={{ fontSize: 12, fill: t.axisText }}
+            axisLine={{ stroke: t.axisLine }}
           />
           <YAxis 
             domain={[0, maxRate]}
             tickFormatter={(v) => v.toFixed(2)}
-            tick={{ fontSize: 10, fill: '#9b9b9b' }}
-            axisLine={{ stroke: 'rgba(55, 53, 47, 0.09)' }}
+            tick={{ fontSize: 11, fill: t.axisText }}
+            axisLine={{ stroke: t.axisLine }}
           />
           <Tooltip content={<CustomTooltip />} />
           <ReferenceLine 
             y={controlRate} 
-            stroke="#2d6d9a" 
+            stroke={t.control} 
             strokeDasharray="4 4" 
             strokeOpacity={0.6}
           />
-          <Bar dataKey="rate" radius={[4, 4, 0, 0]} barSize={60}>
-            <Cell fill="#d3e5ef" stroke="#2d6d9a" strokeWidth={1} />
-            <Cell fill={treatmentRate < controlRate ? "#dbeddb" : "#ffe2dd"} stroke={treatmentRate < controlRate ? "#0f7b0f" : "#c4554d"} strokeWidth={1} />
+          <Bar dataKey="rate" radius={[4, 4, 0, 0]} barSize={60} isAnimationActive={false}>
+            <Cell fill={t.controlTint} stroke={t.control} strokeWidth={1} />
+            <Cell fill={treatmentRate < controlRate ? t.variantTint : t.badTint} stroke={treatmentRate < controlRate ? t.variant : t.bad} strokeWidth={1} />
+            {(controlCI || treatmentCI) && (
+              <ErrorBar dataKey="error" width={6} strokeWidth={1.5} stroke={t.ink} />
+            )}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-      <div className="rate-change-indicator">
-        <span className={`rate-change ${treatmentRate < controlRate ? 'decrease' : 'increase'}`}>
-          {treatmentRate < controlRate ? '↓' : '↑'} {Math.abs(parseFloat(percentChange))}%
-        </span>
-        <span className="rate-change-label">
-          {treatmentRate < controlRate ? 'reduction' : 'increase'} in treatment
-        </span>
-      </div>
+      {percentChange !== null && (
+        <div className="rate-change-indicator">
+          <span className={`rate-change ${treatmentRate < controlRate ? 'decrease' : 'increase'}`}>
+            {treatmentRate < controlRate ? '↓' : '↑'} {Math.abs(parseFloat(percentChange))}%
+          </span>
+          <span className="rate-change-label">
+            {treatmentRate < controlRate ? 'reduction' : 'increase'} in treatment
+          </span>
+        </div>
+      )}
     </div>
   )
 }

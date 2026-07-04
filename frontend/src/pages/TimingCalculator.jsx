@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import FormField from '../components/FormField'
 import { RateComparisonChart, SurvivalPlot } from '../components/charts'
 
@@ -395,14 +396,14 @@ function TimingCalculator() {
 
       {result && result.type === 'rates' && (
         <div className="results-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div className="verdict-tile">
             <span className={`tag ${result.is_significant ? (result.rate_ratio < 1 ? 'tag-green' : 'tag-red') : 'tag-yellow'}`}>
               {result.is_significant
                 ? (result.rate_ratio < 1 ? '✓ Treatment Reduces Rate' : '✓ Treatment Increases Rate')
                 : '○ No Significant Difference'
               }
             </span>
-            <span style={{ fontSize: '24px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+            <span className="verdict-num">
               {result.rate_difference_percent > 0 ? '+' : ''}{result.rate_difference_percent.toFixed(1)}%
             </span>
           </div>
@@ -464,7 +465,7 @@ function TimingCalculator() {
 
           <div className={`callout ${result.is_significant ? 'callout-success' : 'callout-warning'}`} style={{ marginTop: '16px' }}>
             <div className="callout-text markdown-content">
-              <ReactMarkdown>{String(result.recommendation || '')}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{String(result.recommendation || '')}</ReactMarkdown>
             </div>
           </div>
         </div>
@@ -472,14 +473,14 @@ function TimingCalculator() {
 
       {result && result.type === 'survival' && (
         <div className="results-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div className="verdict-tile">
             <span className={`tag ${result.is_significant ? (result.hazard_ratio < 1 ? 'tag-green' : 'tag-blue') : 'tag-yellow'}`}>
               {result.is_significant
                 ? (result.hazard_ratio < 1 ? '✓ Treatment Slows Events' : '✓ Treatment Speeds Events')
                 : '○ No Significant Difference'
               }
             </span>
-            <span style={{ fontSize: '20px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+            <span className="verdict-num">
               HR = {result.hazard_ratio.toFixed(3)}
             </span>
           </div>
@@ -546,7 +547,7 @@ function TimingCalculator() {
               <div className="stats-card-label">Time Difference</div>
               <div className="stats-card-value">
                 {result.time_saved !== null
-                  ? `${result.time_saved > 0 ? '' : '+'}${Math.abs(result.time_saved).toFixed(1)} units`
+                  ? `${result.time_saved > 0 ? '−' : '+'}${Math.abs(result.time_saved).toFixed(1)} units`
                   : 'N/A'
                 }
               </div>
@@ -574,7 +575,7 @@ function TimingCalculator() {
 
           <div className={`callout ${result.is_significant ? 'callout-success' : 'callout-warning'}`} style={{ marginTop: '16px' }}>
             <div className="callout-text markdown-content">
-              <ReactMarkdown>{String(result.recommendation || '')}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{String(result.recommendation || '')}</ReactMarkdown>
             </div>
           </div>
         </div>

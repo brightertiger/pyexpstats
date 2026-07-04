@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from typing import Literal, Optional, List
 import os
 
+import pyexpstats
 from pyexpstats.effects.outcome import conversion, magnitude, timing
 from pyexpstats.methods import bayesian, sequential
 from pyexpstats.diagnostics import srm, health, novelty
@@ -15,7 +16,7 @@ from pyexpstats.business import impact
 app = FastAPI(
     title="pyexpstats API",
     description="Simple A/B testing tools for marketers and analysts",
-    version="0.1.0",
+    version=pyexpstats.__version__,
 )
 
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
@@ -230,7 +231,7 @@ class ImpactProjectionRequest(BaseModel):
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "healthy", "version": "0.1.0"}
+    return {"status": "healthy", "version": pyexpstats.__version__}
 
 
 @app.post("/api/conversion/sample-size")
@@ -276,6 +277,17 @@ def conversion_analyze(request: ConversionAnalyzeRequest):
             confidence=request.confidence,
         )
         
+        control_ci = conversion.confidence_interval(
+            visitors=request.control_visitors,
+            conversions=request.control_conversions,
+            confidence=request.confidence,
+        )
+        variant_ci = conversion.confidence_interval(
+            visitors=request.variant_visitors,
+            conversions=request.variant_conversions,
+            confidence=request.confidence,
+        )
+
         return {
             "control_rate": float(result.control_rate),
             "variant_rate": float(result.variant_rate),
@@ -285,6 +297,8 @@ def conversion_analyze(request: ConversionAnalyzeRequest):
             "confidence": int(result.confidence),
             "p_value": float(result.p_value),
             "confidence_interval": [float(result.confidence_interval_lower), float(result.confidence_interval_upper)],
+            "control_ci": [float(control_ci.lower), float(control_ci.upper)],
+            "variant_ci": [float(variant_ci.lower), float(variant_ci.upper)],
             "winner": str(result.winner),
             "recommendation": str(result.recommendation),
         }
@@ -451,6 +465,19 @@ def magnitude_analyze(request: MagnitudeAnalyzeRequest):
             confidence=request.confidence,
         )
         
+        control_ci = magnitude.confidence_interval(
+            visitors=request.control_visitors,
+            mean=request.control_mean,
+            std=request.control_std,
+            confidence=request.confidence,
+        )
+        variant_ci = magnitude.confidence_interval(
+            visitors=request.variant_visitors,
+            mean=request.variant_mean,
+            std=request.variant_std,
+            confidence=request.confidence,
+        )
+
         return {
             "control_mean": float(result.control_mean),
             "variant_mean": float(result.variant_mean),
@@ -460,6 +487,8 @@ def magnitude_analyze(request: MagnitudeAnalyzeRequest):
             "confidence": int(result.confidence),
             "p_value": float(result.p_value),
             "confidence_interval": [float(result.confidence_interval_lower), float(result.confidence_interval_upper)],
+            "control_ci": [float(control_ci.lower), float(control_ci.upper)],
+            "variant_ci": [float(variant_ci.lower), float(variant_ci.upper)],
             "winner": str(result.winner),
             "recommendation": str(result.recommendation),
         }
@@ -730,6 +759,7 @@ class TimingSampleSizeRequest(BaseModel):
     confidence: int = Field(95, ge=80, le=99, description="Confidence level")
     power: int = Field(80, ge=50, le=99, description="Statistical power")
     dropout_rate: float = Field(0.1, ge=0, lt=1, description="Expected dropout/censoring rate")
+    event_probability: float = Field(1.0, gt=0, le=1, description="Fraction of retained subjects expected to experience the event during follow-up")
 
 
 class TimingSurvivalCurveRequest(BaseModel):
@@ -819,6 +849,7 @@ def timing_sample_size(request: TimingSampleSizeRequest):
             confidence=request.confidence,
             power=request.power,
             dropout_rate=request.dropout_rate,
+            event_probability=request.event_probability,
         )
         return {
             "subjects_per_group": plan.subjects_per_group,
@@ -867,6 +898,15 @@ def timing_rate_analyze(request: TimingRateAnalyzeRequest):
             treatment_exposure=request.treatment_exposure,
             confidence=request.confidence,
         )
+        # Exact (Garwood) Poisson CIs for each group's rate
+        from scipy.stats import chi2 as _chi2
+        _alpha = 1 - request.confidence / 100
+
+        def _poisson_rate_ci(events: int, exposure: float):
+            lower = _chi2.ppf(_alpha / 2, 2 * events) / 2 / exposure if events > 0 else 0.0
+            upper = _chi2.ppf(1 - _alpha / 2, 2 * events + 2) / 2 / exposure
+            return [float(lower), float(upper)]
+
         return {
             "control_rate": float(result.control_rate),
             "treatment_rate": float(result.treatment_rate),
@@ -874,6 +914,8 @@ def timing_rate_analyze(request: TimingRateAnalyzeRequest):
             "control_exposure": float(result.control_exposure),
             "treatment_events": result.treatment_events,
             "treatment_exposure": float(result.treatment_exposure),
+            "control_rate_ci": _poisson_rate_ci(request.control_events, request.control_exposure),
+            "treatment_rate_ci": _poisson_rate_ci(request.treatment_events, request.treatment_exposure),
             "rate_ratio": float(result.rate_ratio),
             "rate_ratio_ci": [float(result.rate_ratio_ci_lower), float(result.rate_ratio_ci_upper)],
             "rate_difference": float(result.rate_difference),
@@ -1178,7 +1220,7 @@ def project_business_impact(request: ImpactProjectionRequest):
             "additional_conversions": additional_conversions,
             "additional_revenue": additional_revenue,
             "additional_profit": additional_profit,
-            "roi_percent": float(additional_profit / max(additional_revenue, 1) * 100) if additional_revenue != 0 else 0.0,
+            "monthly_revenue_lift": float(additional_revenue / 12),
             "confidence": request.confidence,
             "confidence_interval": {
                 "revenue_lower": float(result.revenue_lift_range[0]),
@@ -1188,8 +1230,6 @@ def project_business_impact(request: ImpactProjectionRequest):
             "recommendation": str(result.recommendation),
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 

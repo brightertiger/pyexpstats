@@ -295,8 +295,9 @@ def check_health(
     n_checks = len(checks)
     score = int((pass_count * 100 + warning_count * 50) / n_checks) if n_checks > 0 else 0
 
-    # Can we trust results?
+    # Can we trust results? Any failed check invalidates trust.
     can_trust = (
+        fail_count == 0 and
         srm_result.is_valid and
         min_sample >= minimum_sample_per_variant and
         (test_duration_days is None or test_duration_days >= minimum_days)

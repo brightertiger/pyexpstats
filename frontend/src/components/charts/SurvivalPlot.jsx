@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Area, ComposedChart } from 'recharts'
+import { chartTheme } from './theme'
 
 function SurvivalPlot({
   controlMedian,
@@ -8,6 +9,7 @@ function SurvivalPlot({
   treatmentEvents,
   hazardRatio
 }) {
+  const t = chartTheme()
   const data = useMemo(() => {
     if (!controlMedian || !treatmentMedian) return null
     
@@ -52,48 +54,48 @@ function SurvivalPlot({
 
   return (
     <div className="survival-plot-container">
-      <div className="chart-title">Kaplan-Meier Survival Estimate</div>
+      <div className="chart-title">Survival Curves (exponential model from medians)</div>
       <ResponsiveContainer width="100%" height={220}>
         <ComposedChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
           <defs>
             <linearGradient id="controlSurvGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#d3e5ef" stopOpacity={0.4}/>
-              <stop offset="95%" stopColor="#d3e5ef" stopOpacity={0.05}/>
+              <stop offset="5%" stopColor={t.controlTint} stopOpacity={0.4}/>
+              <stop offset="95%" stopColor={t.controlTint} stopOpacity={0.05}/>
             </linearGradient>
             <linearGradient id="treatmentSurvGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#dbeddb" stopOpacity={0.4}/>
-              <stop offset="95%" stopColor="#dbeddb" stopOpacity={0.05}/>
+              <stop offset="5%" stopColor={t.variantTint} stopOpacity={0.4}/>
+              <stop offset="95%" stopColor={t.variantTint} stopOpacity={0.05}/>
             </linearGradient>
           </defs>
           <XAxis 
             dataKey="time" 
             tickFormatter={(v) => v.toFixed(0)}
-            tick={{ fontSize: 10, fill: '#9b9b9b' }}
-            axisLine={{ stroke: 'rgba(55, 53, 47, 0.09)' }}
+            tick={{ fontSize: 11, fill: t.axisText }}
+            axisLine={{ stroke: t.axisLine }}
           />
           <YAxis 
             domain={[0, 100]}
             ticks={[0, 25, 50, 75, 100]}
             tickFormatter={(v) => `${v}%`}
-            tick={{ fontSize: 10, fill: '#9b9b9b' }}
-            axisLine={{ stroke: 'rgba(55, 53, 47, 0.09)' }}
+            tick={{ fontSize: 11, fill: t.axisText }}
+            axisLine={{ stroke: t.axisLine }}
           />
           <Tooltip content={<CustomTooltip />} />
           <ReferenceLine 
             y={50} 
-            stroke="#9b9b9b" 
+            stroke={t.axisText} 
             strokeDasharray="4 4"
             strokeOpacity={0.5}
           />
           <ReferenceLine 
             x={controlMedian} 
-            stroke="#2d6d9a" 
+            stroke={t.control} 
             strokeDasharray="4 4"
             strokeOpacity={0.6}
           />
           <ReferenceLine 
             x={treatmentMedian} 
-            stroke="#0f7b0f" 
+            stroke={t.variant} 
             strokeDasharray="4 4"
             strokeOpacity={0.6}
           />
@@ -102,28 +104,32 @@ function SurvivalPlot({
             dataKey="control" 
             fill="url(#controlSurvGradient)" 
             stroke="none"
+            isAnimationActive={false}
           />
           <Area 
             type="stepAfter" 
             dataKey="treatment" 
             fill="url(#treatmentSurvGradient)" 
             stroke="none"
+            isAnimationActive={false}
           />
           <Line 
             type="stepAfter" 
             dataKey="control" 
-            stroke="#2d6d9a" 
+            stroke={t.control} 
             strokeWidth={2.5}
             dot={false}
             name="Control"
+            isAnimationActive={false}
           />
           <Line 
             type="stepAfter" 
             dataKey="treatment" 
-            stroke="#0f7b0f" 
+            stroke={t.variant} 
             strokeWidth={2.5}
             dot={false}
             name="Treatment"
+            isAnimationActive={false}
           />
         </ComposedChart>
       </ResponsiveContainer>

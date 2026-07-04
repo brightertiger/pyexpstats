@@ -119,7 +119,8 @@ def check_sample_ratio(
 
     if is_valid:
         severity = "ok"
-    elif p_value >= 0.01:
+    elif p_value >= alpha / 10:
+        # Marginal SRM: significant at alpha but not overwhelmingly so
         severity = "warning"
     else:
         severity = "critical"
@@ -239,7 +240,7 @@ def check_sample_ratio_multi(
         severity = "ok"
         warning = "Traffic split looks good across all variants."
     else:
-        severity = "critical" if p_value < 0.01 else "warning"
+        severity = "critical" if p_value < alpha / 10 else "warning"
         warning = (
             f"SAMPLE RATIO MISMATCH DETECTED across {n_variants} variants! "
             f"Maximum deviation: {max_deviation:.1f}% (p={p_value:.6f})."

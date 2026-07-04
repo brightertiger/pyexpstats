@@ -557,10 +557,27 @@ def _generate_recommendation(
             "the source of heterogeneity."
         )
     elif overall_is_significant and overall_lift > 0:
-        lines.append(
-            "**SHIP TO ALL SEGMENTS** - The variant wins consistently across segments. "
-            "Proceed with confidence."
+        n_sig_positive = sum(
+            1 for r in segment_results if r.is_significant and r.lift_percent > 0
         )
+        if n_sig_positive == len(segment_results) and segment_results:
+            lines.append(
+                "**SHIP TO ALL SEGMENTS** - The variant wins in every segment. "
+                "Proceed with confidence."
+            )
+        elif n_sig_positive > 0:
+            lines.append(
+                f"**SHIP (OVERALL WIN)** - The overall result is significant and "
+                f"{n_sig_positive} of {len(segment_results)} segments individually confirm it. "
+                "No segment shows significant harm, but per-segment evidence is weaker than "
+                "the overall result."
+            )
+        else:
+            lines.append(
+                "**SHIP WITH CAUTION (OVERALL WIN ONLY)** - The overall result is significant, "
+                "but no individual segment reaches significance after correction. The win is "
+                "driven by pooled data; per-segment effects are not individually confirmed."
+            )
     elif overall_is_significant and overall_lift < 0:
         lines.append(
             "**DO NOT SHIP** - The variant underperforms consistently. "

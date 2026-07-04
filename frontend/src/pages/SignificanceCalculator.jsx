@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import TestTypeSelector from '../components/TestTypeSelector'
 import FormField from '../components/FormField'
 import { CIComparisonChart, DistributionChart } from '../components/charts'
@@ -748,14 +749,14 @@ function SignificanceCalculator() {
       {/* Frequentist A/B Results */}
       {result && result.method === 'frequentist' && result.mode === 'ab' && (
         <div className="results-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div className="verdict-tile">
             <span className={`tag ${result.is_significant ? (result.winner === 'variant' ? 'tag-green' : 'tag-red') : 'tag-yellow'}`}>
               {result.is_significant
                 ? (result.winner === 'variant' ? '✓ Variant Wins' : '✓ Control Wins')
                 : '○ Not Significant'
               }
             </span>
-            <span style={{ fontSize: '24px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+            <span className="verdict-num">
               {result.lift_percent > 0 ? '+' : ''}{result.lift_percent.toFixed(2)}%
             </span>
           </div>
@@ -815,8 +816,8 @@ function SignificanceCalculator() {
               <div className="stats-card-value">{result.p_value < 0.0001 ? '<0.01%' : `${(result.p_value * 100).toFixed(2)}%`}</div>
               <div className="stats-card-explanation">
                 {result.p_value < 0.05
-                  ? `There's only a ${(result.p_value * 100).toFixed(2)}% chance this result is due to random chance.`
-                  : `There's a ${(result.p_value * 100).toFixed(1)}% chance this result is due to random chance—too high to be confident.`
+                  ? `If there were truly no difference, a result this extreme would occur only ${(result.p_value * 100).toFixed(2)}% of the time.`
+                  : `If there were truly no difference, a result this extreme would still occur ${(result.p_value * 100).toFixed(1)}% of the time—too often to rule out chance.`
                 }
               </div>
             </div>
@@ -836,7 +837,7 @@ function SignificanceCalculator() {
 
           <div className={`callout ${result.is_significant ? 'callout-success' : 'callout-warning'}`} style={{ marginTop: '16px' }}>
             <div className="callout-text markdown-content">
-              <ReactMarkdown>{String(result.recommendation || '')}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{String(result.recommendation || '')}</ReactMarkdown>
             </div>
           </div>
         </div>
@@ -845,7 +846,7 @@ function SignificanceCalculator() {
       {/* Frequentist Multi-variant Results */}
       {result && result.method === 'frequentist' && result.mode === 'multi' && (
         <div className="results-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div className="verdict-tile">
             <span className={`tag ${result.is_significant ? 'tag-green' : 'tag-yellow'}`}>
               {result.is_significant
                 ? '✓ Significant Differences Found'
@@ -871,7 +872,7 @@ function SignificanceCalculator() {
                 </tr>
               </thead>
               <tbody>
-                {result.variants
+                {[...result.variants]
                   .sort((a, b) => testType === 'conversion' ? b.rate - a.rate : b.mean - a.mean)
                   .map((v, i) => (
                     <tr key={v.name}>
@@ -949,7 +950,7 @@ function SignificanceCalculator() {
 
           <div className={`callout ${result.is_significant ? 'callout-success' : 'callout-warning'}`} style={{ marginTop: '16px' }}>
             <div className="callout-text markdown-content">
-              <ReactMarkdown>{String(result.recommendation || '')}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{String(result.recommendation || '')}</ReactMarkdown>
             </div>
           </div>
         </div>
@@ -958,13 +959,13 @@ function SignificanceCalculator() {
       {/* Bayesian Results */}
       {result && result.method === 'bayesian' && (
         <div className="results-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div className="verdict-tile">
             <span className={`tag ${result.probability_variant_better > 95 ? 'tag-green' : result.probability_variant_better < 5 ? 'tag-red' : 'tag-yellow'}`}>
               {result.probability_variant_better > 95 ? '✓ Variant Wins' :
                result.probability_variant_better < 5 ? '✓ Control Wins' :
                '○ Too Close to Call'}
             </span>
-            <span style={{ fontSize: '24px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+            <span className="verdict-num">
               {result.probability_variant_better.toFixed(1)}% chance variant wins
             </span>
           </div>
@@ -993,16 +994,16 @@ function SignificanceCalculator() {
           <div className="stats-explanation" style={{ marginTop: '20px' }}>
             <div className="stats-card">
               <div className="stats-card-label">Risk of Choosing Variant</div>
-              <div className="stats-card-value">{(result.expected_loss_choosing_variant * 100).toFixed(2)}%</div>
+              <div className="stats-card-value">{result.expected_loss_choosing_variant.toFixed(3)}pp</div>
               <div className="stats-card-explanation">
-                If you ship the variant and it's actually worse, this is how much you might lose in conversion rate.
+                If you ship the variant and it's actually worse, this is how many percentage points of conversion rate you'd expect to lose.
               </div>
             </div>
             <div className="stats-card">
               <div className="stats-card-label">Risk of Keeping Control</div>
-              <div className="stats-card-value">{(result.expected_loss_choosing_control * 100).toFixed(2)}%</div>
+              <div className="stats-card-value">{result.expected_loss_choosing_control.toFixed(3)}pp</div>
               <div className="stats-card-explanation">
-                If you keep the control and variant was actually better, this is how much you might miss out on.
+                If you keep the control and variant was actually better, this is how many percentage points of conversion rate you'd miss out on.
               </div>
             </div>
           </div>
@@ -1044,7 +1045,7 @@ function SignificanceCalculator() {
       {/* Sequential Results */}
       {result && result.method === 'sequential' && (
         <div className="results-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div className="verdict-tile">
             <span className={`tag ${result.can_stop ? 'tag-green' : 'tag-yellow'}`}>
               {result.can_stop ? '✓ You Can Stop!' : '○ Keep Running'}
             </span>

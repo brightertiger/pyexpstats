@@ -500,8 +500,7 @@ function SampleSizeCalculator() {
           <PowerCurveChart
             requiredN={result.visitors_per_variant}
             power={result.power}
-            mde={result.lift_percent}
-            baseline={result.type === 'conversion' ? result.current_rate : result.current_mean}
+            confidence={result.confidence}
           />
 
           <div className="stats-explanation">

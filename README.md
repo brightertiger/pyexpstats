@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://pypi.org/project/pyexpstats/"><img src="https://img.shields.io/pypi/v/pyexpstats.svg" alt="PyPI version"></a>
   <a href="https://pypi.org/project/pyexpstats/"><img src="https://img.shields.io/pypi/pyversions/pyexpstats.svg" alt="Python versions"></a>
-  <a href="https://github.com/ujjwal-ibm/pyexpstats/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://github.com/brightertiger/pyexpstats/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
 </p>
 
 <p align="center">
@@ -98,7 +98,13 @@ pyexpstats models experimental impact across three fundamental **outcome dimensi
 pip install pyexpstats
 ```
 
-**Requirements:** Python 3.8+
+To also run the bundled web app / REST API (`pyexpstats-server`), install the server extra:
+
+```bash
+pip install "pyexpstats[server]"
+```
+
+**Requirements:** Python 3.9+
 
 ---
 

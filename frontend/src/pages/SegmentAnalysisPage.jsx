@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import FormField from '../components/FormField'
 
 function SegmentAnalysisPage() {
@@ -220,7 +221,7 @@ function SegmentAnalysisPage() {
       {result && (
         <div className="results-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '20px', fontWeight: 600 }}>
+            <span className="verdict-num">
               Overall: <span style={{ fontFamily: 'var(--font-mono)' }}>{result.overall_lift >= 0 ? '+' : ''}{result.overall_lift?.toFixed(1)}%</span>
             </span>
             {result.heterogeneity_detected && (
@@ -259,7 +260,7 @@ function SegmentAnalysisPage() {
                 </tr>
               </thead>
               <tbody>
-                {result.segments && result.segments
+                {result.segments && [...result.segments]
                   .sort((a, b) => b.lift_percent - a.lift_percent)
                   .map((seg, i) => (
                     <tr key={i}>
@@ -319,7 +320,7 @@ function SegmentAnalysisPage() {
           {result.recommendation && (
             <div className="callout callout-info" style={{ marginTop: '20px' }}>
               <div className="callout-text markdown-content">
-                <ReactMarkdown>{String(result.recommendation || '')}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{String(result.recommendation || '')}</ReactMarkdown>
               </div>
             </div>
           )}

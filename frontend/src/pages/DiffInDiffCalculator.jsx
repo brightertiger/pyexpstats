@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import TestTypeSelector from '../components/TestTypeSelector'
 import FormField from '../components/FormField'
 import { DiffInDiffChart } from '../components/charts'
@@ -438,14 +439,14 @@ function DiffInDiffCalculator() {
 
       {result && (
         <div className="results-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div className="verdict-tile">
             <span className={`tag ${result.is_significant ? 'tag-green' : 'tag-yellow'}`}>
               {result.is_significant 
                 ? '✓ Significant Treatment Effect'
                 : '○ No Significant Effect'
               }
             </span>
-            <span style={{ fontSize: '24px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+            <span className="verdict-num">
               {result.diff_in_diff > 0 ? '+' : ''}
               {testType === 'conversion' 
                 ? `${(result.diff_in_diff * 100).toFixed(2)}pp`
@@ -584,7 +585,7 @@ function DiffInDiffCalculator() {
 
           <div className={`callout ${result.is_significant ? 'callout-success' : 'callout-warning'}`} style={{ marginTop: '16px' }}>
             <div className="callout-text markdown-content">
-              <ReactMarkdown>{String(result.recommendation || '')}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{String(result.recommendation || '')}</ReactMarkdown>
             </div>
           </div>
         </div>

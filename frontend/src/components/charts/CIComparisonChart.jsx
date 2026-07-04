@@ -1,4 +1,5 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell, ErrorBar } from 'recharts'
+import { chartTheme } from './theme'
 
 function CIComparisonChart({ 
   controlValue, 
@@ -9,6 +10,7 @@ function CIComparisonChart({
   formatValue = (v) => `${(v * 100).toFixed(2)}%`,
   isConversion = true
 }) {
+  const t = chartTheme()
   if (controlValue === undefined || variantValue === undefined) return null
 
   const data = [
@@ -17,12 +19,15 @@ function CIComparisonChart({
       value: controlValue,
       ciLow: controlCI ? controlCI[0] : controlValue,
       ciHigh: controlCI ? controlCI[1] : controlValue,
+      // asymmetric error: [distance below value, distance above value]
+      error: controlCI ? [controlValue - controlCI[0], controlCI[1] - controlValue] : [0, 0],
     },
     {
       name: 'Variant',
       value: variantValue,
       ciLow: variantCI ? variantCI[0] : variantValue,
       ciHigh: variantCI ? variantCI[1] : variantValue,
+      error: variantCI ? [variantValue - variantCI[0], variantCI[1] - variantValue] : [0, 0],
     }
   ]
 
@@ -62,26 +67,29 @@ function CIComparisonChart({
             type="number" 
             domain={[0, maxValue]}
             tickFormatter={(v) => isConversion ? `${(v * 100).toFixed(1)}%` : v.toFixed(1)}
-            tick={{ fontSize: 11, fill: '#9b9b9b' }}
-            axisLine={{ stroke: 'rgba(55, 53, 47, 0.09)' }}
+            tick={{ fontSize: 11, fill: t.axisText }}
+            axisLine={{ stroke: t.axisLine }}
           />
           <YAxis 
             type="category" 
             dataKey="name" 
-            tick={{ fontSize: 12, fill: '#6b6b6b' }}
+            tick={{ fontSize: 12, fill: t.axisText }}
             axisLine={false}
             tickLine={false}
           />
           <Tooltip content={<CustomTooltip />} />
           <ReferenceLine 
             x={controlValue} 
-            stroke="#2d6d9a" 
+            stroke={t.control} 
             strokeDasharray="4 4" 
             strokeOpacity={0.6}
           />
-          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={30}>
-            <Cell fill="#d3e5ef" stroke="#2d6d9a" strokeWidth={1} />
-            <Cell fill="#dbeddb" stroke="#0f7b0f" strokeWidth={1} />
+          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={30} isAnimationActive={false}>
+            <Cell fill={t.controlTint} stroke={t.control} strokeWidth={1} />
+            <Cell fill={t.variantTint} stroke={t.variant} strokeWidth={1} />
+            {(controlCI || variantCI) && (
+              <ErrorBar dataKey="error" direction="x" width={6} strokeWidth={1.5} stroke={t.ink} />
+            )}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -90,6 +98,12 @@ function CIComparisonChart({
           <span className="legend-line dashed"></span>
           Control baseline
         </span>
+        {(controlCI || variantCI) && (
+          <span className="legend-item">
+            <span className="legend-line solid"></span>
+            Confidence interval
+          </span>
+        )}
       </div>
     </div>
   )

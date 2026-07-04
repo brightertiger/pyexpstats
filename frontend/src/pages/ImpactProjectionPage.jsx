@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import FormField from '../components/FormField'
 
 function ImpactProjectionPage() {
@@ -213,13 +214,17 @@ function ImpactProjectionPage() {
         <div className="error-message">{error}</div>
       )}
 
-      {result && (
+      {result && (() => {
+        const fmtUSD = (v) => v != null
+          ? v.toLocaleString('en-US', { maximumFractionDigits: 0 })
+          : 'N/A'
+        return (
         <div className="results-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div className="verdict-tile">
             <span className={`tag ${result.is_significant ? 'tag-green' : 'tag-yellow'}`}>
               {result.is_significant ? '✓ High Confidence Result' : '○ Low Confidence - Need More Data'}
             </span>
-            <span style={{ fontSize: '24px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+            <span className="verdict-num">
               {result.lift_percent >= 0 ? '+' : ''}{result.lift_percent?.toFixed(2)}% improvement
             </span>
           </div>
@@ -233,18 +238,18 @@ function ImpactProjectionPage() {
             </div>
             <div className="result-item">
               <div className="result-label">Additional Revenue</div>
-              <div className="result-value success">${result.additional_revenue?.toLocaleString()}</div>
+              <div className="result-value success">${fmtUSD(result.additional_revenue)}</div>
               <div className="result-unit">per year</div>
             </div>
             <div className="result-item">
               <div className="result-label">Additional Profit</div>
-              <div className="result-value success">${result.additional_profit?.toLocaleString()}</div>
+              <div className="result-value success">${fmtUSD(result.additional_profit)}</div>
               <div className="result-unit">per year</div>
             </div>
             <div className="result-item">
-              <div className="result-label">ROI Potential</div>
-              <div className="result-value">{result.roi_percent?.toFixed(0)}%</div>
-              <div className="result-unit">annualized</div>
+              <div className="result-label">Revenue Lift</div>
+              <div className="result-value">${fmtUSD(result.monthly_revenue_lift)}</div>
+              <div className="result-unit">per month</div>
             </div>
           </div>
 
@@ -253,7 +258,7 @@ function ImpactProjectionPage() {
               <div className="stats-card">
                 <div className="stats-card-label">Expected Revenue Range</div>
                 <div className="stats-card-value">
-                  ${result.confidence_interval?.revenue_lower?.toLocaleString() ?? 'N/A'} to ${result.confidence_interval?.revenue_upper?.toLocaleString() ?? 'N/A'}
+                  ${fmtUSD(result.confidence_interval?.revenue_lower)} to ${fmtUSD(result.confidence_interval?.revenue_upper)}
                 </div>
                 <div className="stats-card-explanation">
                   We're {result.confidence}% confident the real impact falls in this range.
@@ -273,8 +278,8 @@ function ImpactProjectionPage() {
             <div className="callout-text">
               <strong>Bottom Line:</strong> Shipping this variant could generate approximately{' '}
               <strong>{result.additional_conversions?.toLocaleString()}</strong> extra conversions per year,
-              worth about <strong>${result.additional_revenue?.toLocaleString()}</strong> in revenue
-              and <strong>${result.additional_profit?.toLocaleString()}</strong> in profit.
+              worth about <strong>${fmtUSD(result.additional_revenue)}</strong> in revenue
+              and <strong>${fmtUSD(result.additional_profit)}</strong> in profit.
               {!result.is_significant && (
                 <span style={{ color: 'var(--pastel-yellow-text)' }}>
                   {' '}Note: We're not highly confident in these numbers yet - consider running the test longer before making a decision.
@@ -286,12 +291,13 @@ function ImpactProjectionPage() {
           {result.recommendation && (
             <div className={`callout ${result.is_significant ? 'callout-success' : 'callout-warning'}`} style={{ marginTop: '16px' }}>
               <div className="callout-text markdown-content">
-                <ReactMarkdown>{String(result.recommendation || '')}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{String(result.recommendation || '')}</ReactMarkdown>
               </div>
             </div>
           )}
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

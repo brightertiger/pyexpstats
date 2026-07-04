@@ -19,7 +19,7 @@ function CICalculator() {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: parseFloat(value)
+      [name]: value === '' ? '' : parseFloat(value)
     }))
   }
 
@@ -66,7 +66,9 @@ function CICalculator() {
     }
   }
 
-  const currentRate = formData.conversions / formData.visitors
+  const currentRate = formData.visitors > 0 && formData.conversions !== ''
+    ? formData.conversions / formData.visitors
+    : null
 
   return (
     <div>
@@ -194,7 +196,7 @@ function CICalculator() {
             </FormField>
           </div>
 
-          {testType === 'conversion' && formData.visitors > 0 && (
+          {testType === 'conversion' && currentRate !== null && (
             <div style={{ marginTop: '16px', padding: '12px 14px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', display: 'inline-block' }}>
               <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Observed conversion rate: </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '16px' }}>{(currentRate * 100).toFixed(2)}%</span>
@@ -238,11 +240,17 @@ function CICalculator() {
 
           <div className="ci-bar">
             {(() => {
-              const range = testType === 'conversion' ? 1 : Math.max(result.upper * 1.5, result.mean * 2)
-              const lowerPos = Math.max(0, (result.lower / range) * 100)
-              const upperPos = Math.min(100, (result.upper / range) * 100)
-              const pointPos = ((testType === 'conversion' ? result.rate : result.mean) / range) * 100
-              
+              // Zoom the axis to the interval itself (with padding) so the CI
+              // is actually visible, instead of a sliver on a 0-100% axis
+              const width = result.upper - result.lower
+              const pad = Math.max(width * 0.75, 1e-9)
+              const min = Math.max(0, result.lower - pad)
+              const max = result.upper + pad
+              const range = max - min
+              const lowerPos = ((result.lower - min) / range) * 100
+              const upperPos = ((result.upper - min) / range) * 100
+              const pointPos = (((testType === 'conversion' ? result.rate : result.mean) - min) / range) * 100
+
               return (
                 <>
                   <div className="ci-bar-fill" style={{ left: `${lowerPos}%`, width: `${upperPos - lowerPos}%` }} />
@@ -281,7 +289,7 @@ function CICalculator() {
 
           <div className="callout callout-info" style={{ marginTop: '20px' }}>
             <div className="callout-text">
-              <strong>What this means:</strong> Based on {formData.visitors.toLocaleString()} {testType === 'conversion' ? 'visitors' : 'observations'},
+              <strong>What this means:</strong> Based on {Number(formData.visitors || 0).toLocaleString()} {testType === 'conversion' ? 'visitors' : 'observations'},
               we're {result.confidence}% confident the real {testType === 'conversion' ? 'conversion rate' : 'average'} is between{' '}
               <strong>
                 {testType === 'conversion'

@@ -387,30 +387,45 @@ def sample_size(
     power: int = 80,
     dropout_rate: float = 0.1,
     allocation_ratio: float = 1.0,
+    event_probability: float = 1.0,
 ) -> TimingSampleSizePlan:
+    """Plan a time-to-event test.
+
+    The Schoenfeld formula yields the number of *events* required; subjects are
+    derived from it. ``event_probability`` is the fraction of retained subjects
+    expected to experience the event during follow-up — with the default of 1.0
+    every retained subject is assumed to convert, so studies with censoring
+    should pass a realistic value (e.g. 0.4 if ~40% of users ever convert).
+    """
     if control_median <= 0:
         raise ValueError("control_median must be positive")
     if treatment_median <= 0:
         raise ValueError("treatment_median must be positive")
     if not 0 <= dropout_rate < 1:
         raise ValueError("dropout_rate must be between 0 and 1")
-    
+    if not 0 < event_probability <= 1:
+        raise ValueError("event_probability must be in (0, 1]")
+
     hr = control_median / treatment_median
-    
+
     log_hr = np.log(hr)
     if abs(log_hr) < 0.001:
         raise ValueError("Medians are too similar to detect a difference")
-    
+
     result = sample_size_survival(
         hr=hr,
         confidence=confidence,
         power=power,
         allocation_ratio=allocation_ratio,
     )
-    
-    # Adjust for dropout: need more subjects since some will be lost to follow-up
+
+    # sample_size_survival returns required EVENTS per group. Convert events to
+    # enrolled subjects: only event_probability of retained subjects have the
+    # event, and only retention_rate of enrollees are retained.
     retention_rate = 1 - dropout_rate
-    subjects_per_group = int(np.ceil(result.n_per_group / retention_rate))
+    subjects_per_group = int(np.ceil(
+        result.n_per_group / (retention_rate * event_probability)
+    ))
     
     return TimingSampleSizePlan(
         subjects_per_group=subjects_per_group,

@@ -1,4 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
+import { chartTheme } from './theme'
 
 function DiffInDiffChart({
   controlPre,
@@ -8,6 +9,7 @@ function DiffInDiffChart({
   isConversion = true,
   diffInDiff = null
 }) {
+  const t = chartTheme()
   if (controlPre === undefined || controlPost === undefined || 
       treatmentPre === undefined || treatmentPost === undefined) return null
 
@@ -16,7 +18,9 @@ function DiffInDiffChart({
       period: 'Pre-Period',
       control: controlPre,
       treatment: treatmentPre,
-      counterfactual: null
+      // Counterfactual starts at the treatment pre-period value and follows
+      // the control group's trend
+      counterfactual: treatmentPre
     },
     {
       period: 'Post-Period',
@@ -61,47 +65,49 @@ function DiffInDiffChart({
         <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 10 }}>
           <XAxis 
             dataKey="period" 
-            tick={{ fontSize: 12, fill: '#6b6b6b' }}
-            axisLine={{ stroke: 'rgba(55, 53, 47, 0.09)' }}
+            tick={{ fontSize: 12, fill: t.axisText }}
+            axisLine={{ stroke: t.axisLine }}
           />
           <YAxis 
             domain={[minVal, maxVal]}
             tickFormatter={(v) => isConversion ? `${(v * 100).toFixed(1)}%` : v.toFixed(0)}
-            tick={{ fontSize: 10, fill: '#9b9b9b' }}
-            axisLine={{ stroke: 'rgba(55, 53, 47, 0.09)' }}
+            tick={{ fontSize: 11, fill: t.axisText }}
+            axisLine={{ stroke: t.axisLine }}
           />
           <Tooltip content={<CustomTooltip />} />
           <ReferenceLine 
             x="Post-Period" 
-            stroke="rgba(55, 53, 47, 0.09)" 
+            stroke={t.axisLine} 
             strokeDasharray="2 2"
           />
           
-          <Line 
-            type="linear" 
-            dataKey="control" 
-            stroke="#2d6d9a" 
+          <Line
+            type="linear"
+            dataKey="control"
+            stroke={t.control}
             strokeWidth={2.5}
-            dot={{ fill: '#2d6d9a', r: 5 }}
+            dot={{ fill: t.control, r: 5 }}
             name="Control"
+            isAnimationActive={false}
           />
-          <Line 
-            type="linear" 
-            dataKey="treatment" 
-            stroke="#0f7b0f" 
+          <Line
+            type="linear"
+            dataKey="treatment"
+            stroke={t.variant}
             strokeWidth={2.5}
-            dot={{ fill: '#0f7b0f', r: 5 }}
+            dot={{ fill: t.variant, r: 5 }}
             name="Treatment"
+            isAnimationActive={false}
           />
-          <Line 
-            type="linear" 
-            dataKey="counterfactual" 
-            stroke="#9f6b2c" 
+          <Line
+            type="linear"
+            dataKey="counterfactual"
+            stroke={t.warn}
             strokeWidth={2}
             strokeDasharray="5 5"
-            dot={{ fill: '#9f6b2c', r: 4 }}
+            dot={{ fill: t.warn, r: 4 }}
             name="Counterfactual"
-            connectNulls={false}
+            isAnimationActive={false}
           />
         </LineChart>
       </ResponsiveContainer>

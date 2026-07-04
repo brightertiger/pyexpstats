@@ -100,21 +100,44 @@ def minimum_detectable_effect(
     alpha = 1 - confidence / 100
     beta = 1 - power / 100
 
-    z_alpha = norm.ppf(1 - alpha / 2)
-    z_beta = norm.ppf(1 - beta)
+    z_alpha = float(norm.ppf(1 - alpha / 2))
+    z_beta = float(norm.ppf(1 - beta))
 
     n = sample_size_per_variant
 
     if metric_type == "conversion":
-        # For proportions, MDE formula
-        # n = 2 * ((z_alpha + z_beta) / MDE)^2 * p * (1-p) * 2
-        # Solving for MDE:
-        # MDE = (z_alpha + z_beta) * sqrt(2 * p * (1-p) / n)
-
+        # Invert the same formula used by sample_size_two_proportions:
+        #   n = (z_a*sqrt(2*p_bar*(1-p_bar)) + z_b*sqrt(p1*q1 + p2*q2))^2 / delta^2
+        # via bisection on the absolute lift delta, so that planning n visitors
+        # and asking "what can n detect?" give consistent answers.
         p = baseline_rate
-        se = math.sqrt(2 * p * (1 - p) / n)
-        mde_absolute = (z_alpha + z_beta) * se
-        mde_relative = (mde_absolute / p * 100) if p > 0 else float('inf')
+
+        def required_n(delta: float) -> float:
+            p2 = min(p + delta, 1.0 - 1e-12)
+            p_pooled = (p + p2) / 2
+            numerator = (
+                z_alpha * math.sqrt(2 * p_pooled * (1 - p_pooled)) +
+                z_beta * math.sqrt(p * (1 - p) + p2 * (1 - p2))
+            ) ** 2
+            return numerator / (p2 - p) ** 2
+
+        if p > 0:
+            lo, hi = 1e-9, 1.0 - p - 1e-9
+            if required_n(hi) > n:
+                # Even the largest possible lift is undetectable at this n
+                mde_absolute = hi
+            else:
+                for _ in range(100):
+                    mid = (lo + hi) / 2
+                    if required_n(mid) > n:
+                        lo = mid
+                    else:
+                        hi = mid
+                mde_absolute = hi
+            mde_relative = mde_absolute / p * 100
+        else:
+            mde_absolute = float('inf')
+            mde_relative = float('inf')
 
     else:  # continuous
         if baseline_std is None:
@@ -145,8 +168,13 @@ def minimum_detectable_effect(
 
         if metric_type == "conversion":
             p = baseline_rate
+            p2 = min(p + target_absolute, 1.0 - 1e-12)
+            p_pooled = (p + p2) / 2
             sample_needed = int(math.ceil(
-                2 * ((z_alpha + z_beta) ** 2) * p * (1 - p) / (target_absolute ** 2)
+                (
+                    z_alpha * math.sqrt(2 * p_pooled * (1 - p_pooled)) +
+                    z_beta * math.sqrt(p * (1 - p) + p2 * (1 - p2))
+                ) ** 2 / (p2 - p) ** 2
             ))
         else:
             sample_needed = int(math.ceil(

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import FormField from '../components/FormField'
 
 function DiagnosticsPage() {
@@ -370,12 +371,12 @@ function DiagnosticsPage() {
 
       {result && result.type === 'health' && (
         <div className="results-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div className="verdict-tile">
             <span className={`tag ${getStatusColor(result.overall_status)}`}>
               {result.overall_status === 'healthy' ? '✓ Healthy' :
                result.overall_status === 'warning' ? '⚠ Warning' : '✕ Issues Detected'}
             </span>
-            <span style={{ fontSize: '20px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+            <span className="verdict-num">
               Score: {result.score}/100
             </span>
           </div>
@@ -407,7 +408,7 @@ function DiagnosticsPage() {
 
       {result && result.type === 'srm' && (
         <div className="results-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div className="verdict-tile">
             <span className={`tag ${result.is_valid ? 'tag-green' : 'tag-red'}`}>
               {result.is_valid ? '✓ Traffic Split Looks Good' : '✕ Uneven Traffic Split'}
             </span>
@@ -447,7 +448,7 @@ function DiagnosticsPage() {
 
       {result && result.type === 'novelty' && (
         <div className="results-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div className="verdict-tile">
             <span className={`tag ${result.effect_detected ? 'tag-yellow' : 'tag-green'}`}>
               {result.effect_type === 'novelty' ? '⚠ Results Are Fading' :
                result.effect_type === 'primacy' ? '📈 Results Are Growing' :
