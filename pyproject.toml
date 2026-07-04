@@ -71,6 +71,20 @@ dev = [
     "mypy>=1.0.0",
 ]
 
+# PEP 735 dependency group for the Vercel deployment: uv sync installs the
+# default groups below even with --no-dev, but groups are NOT part of the
+# published wheel's metadata, so pip users still get a lean install.
+# Keep in sync with the [server] extra above.
+[dependency-groups]
+server = [
+    "pydantic>=2.0.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.20.0",
+]
+
+[tool.uv]
+default-groups = ["server"]
+
 [project.urls]
 Homepage = "https://github.com/brightertiger/pyexpstats"
 Documentation = "https://github.com/brightertiger/pyexpstats#readme"
