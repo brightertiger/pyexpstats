@@ -221,3 +221,5 @@ Thumbs.db
 
 # pyexpstats
 .creds/
+.vercel
+.env*.local
