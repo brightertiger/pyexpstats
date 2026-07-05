@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "abverdict"
-version = "0.3.0"
+version = "0.3.1"
 description = "Statistical tools for A/B testing - sample size calculation, power analysis, significance testing, Bayesian analysis, sequential testing, and business impact projections"
 readme = "README.md"
 license = {text = "MIT"}
