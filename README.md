@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="static/logo.png" alt="abverdict - Python A/B Testing and Experiment Analysis Library" width="400">
+  <img src="static/logo.png" alt="abverdict - Python A/B Testing and Experiment Analysis Library" width="520">
 </p>
 
 <h1 align="center">abverdict</h1>
@@ -43,10 +43,6 @@
 No installation needed! Use our **free online A/B testing calculator** at:
 
 ### **[abverdict.vercel.app](https://abverdict.vercel.app)**
-
-<p align="center">
-  <img src="static/interface.png" alt="A/B Test Calculator - Sample Size and Statistical Significance Calculator Interface" width="700">
-</p>
 
 Calculate sample sizes, analyze experiment results, and determine statistical significance — all in your browser.
 
